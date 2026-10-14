@@ -49,16 +49,32 @@ namespace Unturned.UnityEx
 			GameDirectory = new DirectoryInfo(Application.dataPath).Parent.Parent;
 			GameDataDirectory = new DirectoryInfo(Path.Join(Application.dataPath, "Resources", "Data"));
 #elif UNITY_ANDROID
-			DirectoryInfo bundleDir = new DirectoryInfo(Path.Combine(Application.persistentDataPath, "UnturnedBundle"));
-			if (bundleDir.Exists)
+			string persistentPath = Application.persistentDataPath;
+			string[] candidates = new string[]
 			{
-				GameDirectory = bundleDir;
-			}
-			else
+				Path.Combine(persistentPath, "UnturnedBundle"),
+				Path.Combine(persistentPath, "UnturnedBundle", "UnturnedBundle"),
+				Path.Combine(persistentPath, "unturnedbundle"),
+				Path.Combine(persistentPath, "Unturned"),
+				persistentPath
+			};
+			DirectoryInfo selectedDir = null;
+			foreach (string candidate in candidates)
 			{
-				GameDirectory = new DirectoryInfo(Application.persistentDataPath);
+				if (Directory.Exists(Path.Combine(candidate, "Bundles")))
+				{
+					selectedDir = new DirectoryInfo(candidate);
+					break;
+				}
 			}
+			if (selectedDir == null)
+			{
+				DirectoryInfo defaultBundleDir = new DirectoryInfo(Path.Combine(persistentPath, "UnturnedBundle"));
+				selectedDir = defaultBundleDir.Exists ? defaultBundleDir : new DirectoryInfo(persistentPath);
+			}
+			GameDirectory = selectedDir;
 			GameDataDirectory = GameDirectory;
+			Debug.Log($"[Unturned Android] Selected GameDirectory: {GameDirectory.FullName}");
 #else // UNITY_STANDALONE_WIN || UNITY_STANDALONE_LINUX
 			// Windows and Linux Application.dataPath is <path to executablename_Data folder>
 			GameDataDirectory = new DirectoryInfo(Application.dataPath);

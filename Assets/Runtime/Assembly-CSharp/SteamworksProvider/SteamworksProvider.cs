@@ -109,7 +109,7 @@ namespace SDG.SteamworksProvider
 				}
 
 #if UNITY_ANDROID
-				SDG.Unturned.Provider.steamAppInstallDirectory = null;
+				SDG.Unturned.Provider.steamAppInstallDirectory = SDG.Unturned.UnturnedPaths.RootDirectory;
 #elif UNITY_EDITOR || DEVELOPMENT_BUILD || !WITH_NOREDIST
 				string appInstallDir;
 				uint appInstallDirLength = SteamApps.GetAppInstallDir((AppId_t) appInfo.id, out appInstallDir, /*bufferSize*/ 1024);

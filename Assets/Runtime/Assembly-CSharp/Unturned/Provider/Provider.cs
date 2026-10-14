@@ -6755,7 +6755,7 @@ namespace SDG.Unturned
 				return;
 			}
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD || !WITH_NOREDIST
+#if (UNITY_EDITOR || DEVELOPMENT_BUILD || !WITH_NOREDIST) && !UNITY_ANDROID
 			if (steamAppInstallDirectory == null)
 			{
 #if UNITY_EDITOR
@@ -6767,7 +6767,7 @@ namespace SDG.Unturned
 #endif // UNITY_EDITOR
 				return;
 			}
-#endif // UNITY_EDITOR || DEVELOPMENT_BUILD || !WITH_NOREDIST
+#endif // (UNITY_EDITOR || DEVELOPMENT_BUILD || !WITH_NOREDIST) && !UNITY_ANDROID
 
 #if !DEDICATED_SERVER
 			SteamLaunchArguments.Init();
