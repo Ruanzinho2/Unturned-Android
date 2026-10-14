@@ -1,9 +1,7 @@
 {
     "name": "com.rlabrecque.steamworks.net",
     "references": [],
-    "includePlatforms": [
-        "Android"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": true,
     "overrideReferences": false,
