@@ -2,6 +2,7 @@
 // This file is part of the U3 SDK: https://github.com/smartlydressedgames/u3-sdk/    //
 // Please refer to the included LICENSE.txt for copyright notice and license details. //
 ////////////////////////////////////////////////////////////////////////////////////////
+using System;
 using Newtonsoft.Json;
 using System.IO;
 using System.Security.AccessControl;
@@ -68,7 +69,7 @@ namespace SDG.Unturned
 			{
 				return JsonConvert.DeserializeObject<T>(data);
 			}
-			catch (Exception ex)
+			catch (System.Exception ex)
 			{
 				UnturnedLog.warn($"Exception deserializing JSON at {path}: {ex.Message}");
 				return instance;
@@ -92,7 +93,7 @@ namespace SDG.Unturned
 			{
 				JsonConvert.PopulateObject(data, target);
 			}
-			catch (Exception ex)
+			catch (System.Exception ex)
 			{
 				UnturnedLog.warn($"Exception populating JSON at {path}: {ex.Message}");
 			}
@@ -164,7 +165,7 @@ namespace SDG.Unturned
 
 				writeBytes(path, useCloud, usePath, bytes, bytes.Length);
 			}
-			catch (Exception ex)
+			catch (System.Exception ex)
 			{
 				UnturnedLog.warn($"Exception serializing JSON at {path}: {ex.Message}");
 			}
