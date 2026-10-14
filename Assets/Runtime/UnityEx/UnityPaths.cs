@@ -48,6 +48,21 @@ namespace Unturned.UnityEx
 			// MacOS Application.dataPath is <path to player app bundle>/Contents
 			GameDirectory = new DirectoryInfo(Application.dataPath).Parent.Parent;
 			GameDataDirectory = new DirectoryInfo(Path.Join(Application.dataPath, "Resources", "Data"));
+#elif UNITY_ANDROID
+			GameDataDirectory = new DirectoryInfo(Application.persistentDataPath);
+			GameDirectory = new DirectoryInfo(Path.Combine(Application.persistentDataPath, "UnturnedBundle"));
+			if (!GameDirectory.Exists)
+			{
+				try
+				{
+					GameDirectory.Create();
+				}
+				catch
+				{
+					// Fallback to persistentDataPath directly if creation fails
+					GameDirectory = GameDataDirectory;
+				}
+			}
 #else // UNITY_STANDALONE_WIN || UNITY_STANDALONE_LINUX
 			// Windows and Linux Application.dataPath is <path to executablename_Data folder>
 			GameDataDirectory = new DirectoryInfo(Application.dataPath);

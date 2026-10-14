@@ -1596,6 +1596,8 @@ namespace SDG.Unturned
 						clientPlatform = EClientPlatform.Mac;
 #elif UNITY_STANDALONE_LINUX
 						clientPlatform = EClientPlatform.Linux;
+#else
+						clientPlatform = EClientPlatform.Linux;
 #endif
 
 						critMods.Clear();

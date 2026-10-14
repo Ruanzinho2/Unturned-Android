@@ -163,7 +163,7 @@ PlayerSettings:
   androidSupportedAspectRatio: 1
   androidMaxAspectRatio: 2.1
   applicationIdentifier:
-    Android: com.Company.ProductName
+    Android: com.SmartlyDressedGames.Unturned
     Standalone: com.smartlydressedgames.unturned
     Tizen: com.Company.ProductName
     iPhone: com.Company.ProductName
@@ -267,7 +267,7 @@ PlayerSettings:
   useCustomGradlePropertiesTemplate: 0
   useCustomGradleSettingsTemplate: 0
   useCustomProguardFile: 0
-  AndroidTargetArchitectures: 5
+  AndroidTargetArchitectures: 3
   AndroidTargetDevices: 0
   AndroidSplashScreenScale: 0
   androidSplashScreen: {fileID: 0}
@@ -721,7 +721,7 @@ PlayerSettings:
   platformArchitecture:
     iPhone: 1
   scriptingBackend:
-    Android: 0
+    Android: 1
     Standalone: 0
     WP8: 2
     WebGL: 1

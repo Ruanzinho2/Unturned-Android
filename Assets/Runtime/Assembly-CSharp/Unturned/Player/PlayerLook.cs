@@ -1446,15 +1446,15 @@ namespace SDG.Unturned
 									break;
 							}
 
-							_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * Input.GetAxis("mouse_x") * yawInputMultiplier;
+							_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
 
 							if (ControlsSettings.invert)
 							{
-								_orbitPitch += ControlsSettings.mouseAimSensitivity * zoomSensitivity * Input.GetAxis("mouse_y") * pitchInputMultiplier;
+								_orbitPitch += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
 							}
 							else
 							{
-								_orbitPitch -= ControlsSettings.mouseAimSensitivity * zoomSensitivity * Input.GetAxis("mouse_y") * pitchInputMultiplier;
+								_orbitPitch -= ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
 							}
 						}
 					}
@@ -1462,8 +1462,8 @@ namespace SDG.Unturned
 					{
 						if (perspective == EPlayerPerspective.FIRST || isTracking || isLocking || isFocusing)
 						{
-							_look_x = ControlsSettings.mouseAimSensitivity * Input.GetAxis("mouse_x") * yawInputMultiplier;
-							_look_y = ControlsSettings.mouseAimSensitivity * -Input.GetAxis("mouse_y") * pitchInputMultiplier;
+							_look_x = ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
+							_look_y = ControlsSettings.mouseAimSensitivity * -InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
 						}
 
 						if (InputEx.GetKey(ControlsSettings.rollLeft))
@@ -1522,14 +1522,14 @@ namespace SDG.Unturned
 
 						if (player.movement.getVehicle() != null && perspective == EPlayerPerspective.THIRD)
 						{
-							_orbitYaw += ControlsSettings.mouseAimSensitivity * Input.GetAxis("mouse_x") * yawInputMultiplier;
+							_orbitYaw += ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
 							_orbitYaw = orbitYaw % 360.0f;
 						}
 						else
 						{
 							if (player.movement.getVehicle() == null || !player.movement.getVehicle().asset.hasLockMouse || !player.movement.getVehicle().isDriver)
 							{
-								_yaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * Input.GetAxis("mouse_x") * yawInputMultiplier;
+								_yaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
 							}
 						}
 
@@ -1537,11 +1537,11 @@ namespace SDG.Unturned
 						{
 							if (ControlsSettings.invert)
 							{
-								_orbitPitch += ControlsSettings.mouseAimSensitivity * Input.GetAxis("mouse_y") * pitchInputMultiplier;
+								_orbitPitch += ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
 							}
 							else
 							{
-								_orbitPitch -= ControlsSettings.mouseAimSensitivity * Input.GetAxis("mouse_y") * pitchInputMultiplier;
+								_orbitPitch -= ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
 							}
 						}
 						else
@@ -1550,11 +1550,11 @@ namespace SDG.Unturned
 							{
 								if (ControlsSettings.invert)
 								{
-									_pitch += ControlsSettings.mouseAimSensitivity * zoomSensitivity * Input.GetAxis("mouse_y") * pitchInputMultiplier;
+									_pitch += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
 								}
 								else
 								{
-									_pitch -= ControlsSettings.mouseAimSensitivity * zoomSensitivity * Input.GetAxis("mouse_y") * pitchInputMultiplier;
+									_pitch -= ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
 								}
 							}
 						}

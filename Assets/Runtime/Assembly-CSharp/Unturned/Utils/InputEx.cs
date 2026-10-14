@@ -16,7 +16,7 @@ namespace SDG.Unturned
 		/// </summary>
 		public static bool GetKey(KeyCode key)
 		{
-			return Input.GetKey(key) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
+			return (Input.GetKey(key) || InputBroker.GetKey(key)) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
 		}
 
 		/// <summary>
@@ -24,7 +24,7 @@ namespace SDG.Unturned
 		/// </summary>
 		public static bool GetKeyDown(KeyCode key)
 		{
-			return Input.GetKeyDown(key) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
+			return (Input.GetKeyDown(key) || InputBroker.GetKeyDown(key)) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
 		}
 
 		/// <summary>
@@ -32,7 +32,7 @@ namespace SDG.Unturned
 		/// </summary>
 		public static bool GetKeyUp(KeyCode key)
 		{
-			return Input.GetKeyUp(key) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
+			return (Input.GetKeyUp(key) || InputBroker.GetKeyUp(key)) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
 		}
 
 		/// <summary>
@@ -54,7 +54,7 @@ namespace SDG.Unturned
 		{
 			get
 			{
-				Vector2 mousePosition = Input.mousePosition;
+				Vector2 mousePosition = InputBroker.isSimulation ? (Vector2)InputBroker.mousePosition : (Vector2)Input.mousePosition;
 				mousePosition.x /= Screen.width;
 				mousePosition.y /= Screen.height;
 				return mousePosition;

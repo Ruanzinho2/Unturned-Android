@@ -193,3 +193,9 @@ ItemLinks.txt
 # Unity creates these files during export
 /Assets/Resources/PerformanceTestRunInfo*
 /Assets/Resources/PerformanceTestRunSettings*
+
+# Local inspection and analysis files
+/UNTURNED_APK/
+/Bundles_Unturned/
+ETAPA_*.txt
+Etapa_*.txt

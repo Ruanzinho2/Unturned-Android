@@ -121,6 +121,8 @@ namespace SDG.Unturned
 			platformBundleName = MasterBundleHelper.getMacAssetBundleName(assetBundleName);
 #elif UNITY_STANDALONE_LINUX
 			platformBundleName = MasterBundleHelper.getLinuxAssetBundleName(assetBundleName);
+#else
+			platformBundleName = assetBundleName;
 #endif // UNITY_STANDALONE_LINUX
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD || !WITH_NOREDIST

@@ -24,6 +24,10 @@ namespace SDG.Unturned
 
 		public static byte[] readData()
 		{
+#if UNITY_ANDROID
+			// On Android IL2CPP, Assembly-CSharp.dll does not exist on disk as a standalone assembly.
+			return new byte[20];
+#else
 #if UNITY_EDITOR
 			FileStream stream = new FileStream(UnityPaths.ProjectDirectory.FullName + "/Builds/Windows64/Unturned_Data/Managed/Assembly-CSharp.dll", FileMode.Open, FileAccess.Read, FileShare.Read);
 #else
@@ -35,6 +39,7 @@ namespace SDG.Unturned
 			stream.Dispose();
 
 			return Hash.SHA1(bytes);
+#endif
 		}
 
 		public static T deserializeJSON<T>(string path, bool useCloud)

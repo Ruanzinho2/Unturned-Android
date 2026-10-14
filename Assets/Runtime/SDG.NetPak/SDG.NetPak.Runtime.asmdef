@@ -2,7 +2,7 @@
     "name": "SDG.NetPak.Runtime",
     "references": [
         "GUID:ffe08d7528f3ff846a1bcf19e844a690",
-        "GUID:68bd7fdb68ef2684e982e8a9825b18a5"
+        "com.rlabrecque.steamworks.net"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
