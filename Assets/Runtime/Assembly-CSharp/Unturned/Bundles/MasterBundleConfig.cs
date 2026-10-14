@@ -114,6 +114,9 @@ namespace SDG.Unturned
 		/// </summary>
 		public string getAssetBundlePath()
 		{
+#if UNITY_ANDROID
+			return Path.Combine(directoryPath, assetBundleName);
+#else
 			string platformBundleName;
 #if UNITY_STANDALONE_WIN
 			platformBundleName = assetBundleName;
@@ -162,6 +165,7 @@ namespace SDG.Unturned
 #endif // UNITY_STANDALONE_OSX || UNITY_STANDALONE_LINUX
 
 			return Path.Combine(directoryPath, assetBundleName);
+#endif // !UNITY_ANDROID
 		}
 
 		/// <summary>
@@ -169,6 +173,9 @@ namespace SDG.Unturned
 		/// </summary>
 		public string getHashFilePath()
 		{
+#if UNITY_ANDROID
+			return MasterBundleHelper.getHashFileName(Path.Combine(directoryPath, assetBundleName));
+#else
 			// 2022-11-16 this does not call getAssetBundlePath() because that has per-platform overrides!
 
 #if UNITY_EDITOR || DEVELOPMENT_BUILD || !WITH_NOREDIST
@@ -198,6 +205,7 @@ namespace SDG.Unturned
 #endif // UNITY_EDITOR || DEVELOPMENT_BUILD || !WITH_NOREDIST
 
 			return MasterBundleHelper.getHashFileName(Path.Combine(directoryPath, assetBundleName));
+#endif // !UNITY_ANDROID
 		}
 
 		/// <summary>

@@ -64,7 +64,15 @@ namespace SDG.Unturned
 				return instance;
 			}
 
-			return JsonConvert.DeserializeObject<T>(data);
+			try
+			{
+				return JsonConvert.DeserializeObject<T>(data);
+			}
+			catch (Exception ex)
+			{
+				UnturnedLog.warn($"Exception deserializing JSON at {path}: {ex.Message}");
+				return instance;
+			}
 		}
 
 		/// <summary>
@@ -80,7 +88,14 @@ namespace SDG.Unturned
 			if (data == null)
 				return;
 
-			JsonConvert.PopulateObject(data, target);
+			try
+			{
+				JsonConvert.PopulateObject(data, target);
+			}
+			catch (Exception ex)
+			{
+				UnturnedLog.warn($"Exception populating JSON at {path}: {ex.Message}");
+			}
 		}
 
 		public static byte[] cloudFileRead(string path)
@@ -142,10 +157,17 @@ namespace SDG.Unturned
 
 		public static void serializeJSON<T>(string path, bool useCloud, bool usePath, T instance)
 		{
-			string data = JsonConvert.SerializeObject(instance, Newtonsoft.Json.Formatting.Indented);
-			byte[] bytes = Encoding.UTF8.GetBytes(data);
+			try
+			{
+				string data = JsonConvert.SerializeObject(instance, Newtonsoft.Json.Formatting.Indented);
+				byte[] bytes = Encoding.UTF8.GetBytes(data);
 
-			writeBytes(path, useCloud, usePath, bytes, bytes.Length);
+				writeBytes(path, useCloud, usePath, bytes, bytes.Length);
+			}
+			catch (Exception ex)
+			{
+				UnturnedLog.warn($"Exception serializing JSON at {path}: {ex.Message}");
+			}
 		}
 
 		private static readonly XmlSerializerNamespaces XML_SERIALIZER_NAMESPACES = new XmlSerializerNamespaces(new[] { XmlQualifiedName.Empty });

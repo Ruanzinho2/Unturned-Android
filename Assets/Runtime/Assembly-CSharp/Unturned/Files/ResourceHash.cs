@@ -49,7 +49,10 @@ namespace SDG.Unturned
 			GatherFilePathsInDirectory(dataPath, paths);
 
 			string subDir = Path.Combine(dataPath, "Resources");
-			GatherFilePathsInDirectory(subDir, paths);
+			if (Directory.Exists(subDir))
+			{
+				GatherFilePathsInDirectory(subDir, paths);
+			}
 
 			return paths;
 		}

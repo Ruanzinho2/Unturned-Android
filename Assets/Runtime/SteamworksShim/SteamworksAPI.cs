@@ -84,8 +84,13 @@ namespace Steamworks {
             return 0;
         }
         public static uint GetAppInstallDir(AppId_t appID, out string pchFolder, uint cchFolderBufferSize) {
+#if UNITY_ANDROID
+            pchFolder = null;
+            return 0;
+#else
             pchFolder = System.IO.Directory.GetCurrentDirectory();
             return (uint)pchFolder.Length;
+#endif
         }
         public static bool BIsAppInstalled(AppId_t appID) {
             return false;

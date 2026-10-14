@@ -201,3 +201,5 @@ ETAPA_*.txt
 Etapa_*.txt
 *.ulf
 *.alf
+Build_APK/
+Unturned-Android.apk

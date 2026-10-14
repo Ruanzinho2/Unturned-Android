@@ -108,7 +108,9 @@ namespace SDG.SteamworksProvider
 					throw new Exception("Steam API initialization failed.");
 				}
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD || !WITH_NOREDIST
+#if UNITY_ANDROID
+				SDG.Unturned.Provider.steamAppInstallDirectory = null;
+#elif UNITY_EDITOR || DEVELOPMENT_BUILD || !WITH_NOREDIST
 				string appInstallDir;
 				uint appInstallDirLength = SteamApps.GetAppInstallDir((AppId_t) appInfo.id, out appInstallDir, /*bufferSize*/ 1024);
 				if (appInstallDirLength > 0)
