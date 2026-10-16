@@ -2207,7 +2207,7 @@ namespace SDG.Unturned
 				}
 				else
 				{
-					if (coreMasterBundle == null)
+					if (coreMasterBundle == null && (loadingStats.isLoadingAssetBundles || pendingMasterBundles.Count > 0))
 					{
 						// Do nothing until core master bundle is loaded.
 						// Kind of a hack, but lots of stuff depends on it.
@@ -2403,6 +2403,12 @@ namespace SDG.Unturned
 			Debug.Assert(!hasFinishedInitialStartupLoading);
 			hasFinishedInitialStartupLoading = true;
 
+#if UNITY_ANDROID
+			if (shouldLoadAnyAssets && coreMasterBundle == null)
+			{
+				UnturnedLog.warn("Core master bundle was not loaded, but continuing on Android to allow UI/Menu to function.");
+			}
+#else
 			if (shouldLoadAnyAssets && coreMasterBundle == null)
 			{
 				if (!Provider.WasQuitGameCalled) // Don't show a second dialog.
@@ -2415,6 +2421,7 @@ namespace SDG.Unturned
 				}
 				yield break;
 			}
+#endif
 
 #if UNITY_EDITOR
 			if (exportAssetsReport && !Dedicator.IsDedicatedServer)

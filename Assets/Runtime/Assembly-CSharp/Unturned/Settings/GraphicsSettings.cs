@@ -480,6 +480,10 @@ namespace SDG.Unturned
 
 		public static void applyResolution()
 		{
+#if UNITY_ANDROID
+			UnturnedLog.info($"Android detected: Keeping native display resolution {Screen.width}x{Screen.height} without calling Screen.SetResolution");
+			return;
+#endif
 			if (Application.isEditor)
 				return;
 
@@ -1042,7 +1046,11 @@ namespace SDG.Unturned
 			if (currentResolution == null || currentResolution.Width < 1 || currentResolution.Height < 1)
 			{
 				// Has not been initialized yet, so we default to the highest recommended resolution.
+#if UNITY_ANDROID
+				graphicsSettingsData.Resolution = new GraphicsSettingsResolution(Mathf.Max(Screen.width, Screen.height), Mathf.Min(Screen.width, Screen.height));
+#else
 				graphicsSettingsData.Resolution = new GraphicsSettingsResolution(ScreenEx.GetHighestRecommendedResolution());
+#endif
 				UnturnedLog.info($"Restored default resolution to {graphicsSettingsData.Resolution.Width}x{graphicsSettingsData.Resolution.Height}");
 			}
 		}
@@ -1138,6 +1146,7 @@ namespace SDG.Unturned
 				graphicsSettingsData.EffectQuality = EGraphicQuality.MEDIUM;
 			}
 
+#if !UNITY_ANDROID
 			if (!Application.isEditor)
 			{
 				Resolution highestRecommendedResolution = ScreenEx.GetHighestRecommendedResolution();
@@ -1146,6 +1155,7 @@ namespace SDG.Unturned
 					resolution = new GraphicsSettingsResolution(highestRecommendedResolution);
 				}
 			}
+#endif
 		}
 
 		public static void save()

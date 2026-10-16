@@ -22,6 +22,13 @@ namespace SDG.Unturned
 
 		public static float GetCurrentAspectRatio()
 		{
+#if UNITY_ANDROID
+			if (Screen.height > 0)
+			{
+				return (float) Screen.width / Screen.height;
+			}
+			return 1.0f;
+#else
 			Resolution currentResolution = Screen.currentResolution;
 			if (currentResolution.height > 0)
 			{
@@ -31,6 +38,7 @@ namespace SDG.Unturned
 			{
 				return 1.0f;
 			}
+#endif
 		}
 
 		public static Resolution[] GetRecommendedResolutions()
@@ -45,6 +53,12 @@ namespace SDG.Unturned
 
 		public static Resolution GetHighestRecommendedResolution()
 		{
+#if UNITY_ANDROID
+			Resolution res = new Resolution();
+			res.width = Mathf.Max(Screen.width, Screen.height);
+			res.height = Mathf.Min(Screen.width, Screen.height);
+			return res;
+#else
 			Resolution[] recommendedResolutions = GetRecommendedResolutions();
 			if (recommendedResolutions.Length > 0)
 			{
@@ -54,6 +68,7 @@ namespace SDG.Unturned
 			{
 				return Screen.currentResolution;
 			}
+#endif
 		}
 
 		private static void CacheResolutions()
