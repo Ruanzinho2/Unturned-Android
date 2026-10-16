@@ -271,7 +271,11 @@ namespace SDG.Unturned
 		/// Potentially useful for players running out of RAM, refer to:
 		/// https://github.com/SmartlyDressedGames/Unturned-3.x-Community/issues/1352#issuecomment-751138105
 		/// </summary>
+#if UNITY_ANDROID
+		private static CommandLineFlag shouldCollectGarbageAggressively = new CommandLineFlag(true, "-AggressiveGC");
+#else
 		private static CommandLineFlag shouldCollectGarbageAggressively = new CommandLineFlag(false, "-AggressiveGC");
+#endif
 
 		/// <summary>
 		/// Should modded spawn tables being inserted into parents be logged?
@@ -2228,6 +2232,21 @@ namespace SDG.Unturned
 				// - If those assets loaded slowly the game was very unresponsive and Windows might show the unresponsive program popup.
 				// Instead we now target 20 frames per second.
 				double timeSinceLastFrame = Time.realtimeSinceStartupAsDouble - previousFrameTime;
+#if UNITY_ANDROID
+				// On Android, yield more frequently (20ms instead of 50ms) to prevent freezing the main thread
+				// and run CleanupMemory every 10 frames to avoid Out-Of-Memory (LMK).
+				if (timeSinceLastFrame > 0.02)
+				{
+					SyncAssetDefinitionLoadingProgress();
+					++gcFrameCount;
+					if (gcFrameCount % 10 == 0 && shouldCollectGarbageAggressively)
+					{
+						CleanupMemory();
+					}
+					yield return null;
+					previousFrameTime = Time.realtimeSinceStartupAsDouble;
+				}
+#else
 				if (timeSinceLastFrame > 0.05)
 				{
 					SyncAssetDefinitionLoadingProgress();
@@ -2239,6 +2258,7 @@ namespace SDG.Unturned
 					yield return null;
 					previousFrameTime = Time.realtimeSinceStartupAsDouble;
 				}
+#endif
 			}
 		}
 

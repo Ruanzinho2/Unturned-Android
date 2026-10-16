@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.SmartlyDressedGames.Unturned">
+  <application
+      android:largeHeap="true"
+      android:hardwareAccelerated="true"
+      tools:replace="android:largeHeap">
+    <activity
+        android:name="com.unity3d.player.UnityPlayerActivity"
+        android:theme="@style/UnityThemeSelector"
+        android:screenOrientation="sensorLandscape"
+        android:launchMode="singleTask"
+        android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density"
+        android:resizeableActivity="false"
+        android:hardwareAccelerated="true"
+        android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+      <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+    </activity>
+  </application>
+</manifest>
