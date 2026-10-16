@@ -90,6 +90,9 @@ namespace SDG.Unturned
 					}
 
 					UnturnedLog.warn("Unable to find consolidated version of shader {0} for material {1} in {2} {3}", sharedShader.name, sharedMaterial.name, name, pathToChild);
+#if UNITY_ANDROID
+					sharedMaterial.shader = Shader.Find("Standard") ?? Shader.Find("Mobile/Diffuse");
+#endif
 				}
 			}
 			else
@@ -177,6 +180,9 @@ namespace SDG.Unturned
 				else
 				{
 					UnturnedLog.warn("Unable to find consolidated version of shader {0} for material {1} in {2}", originalShader.name, material.name, name);
+#if UNITY_ANDROID
+					material.shader = Shader.Find("Standard") ?? Shader.Find("Mobile/Diffuse");
+#endif
 				}
 			}
 
