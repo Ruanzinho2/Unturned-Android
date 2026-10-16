@@ -17,6 +17,12 @@ namespace SDG.Unturned
 			this.Height = resolution.height;
 		}
 
+		public GraphicsSettingsResolution(int width, int height)
+		{
+			this.Width = width;
+			this.Height = height;
+		}
+
 		public GraphicsSettingsResolution()
 		{
 			this.Width = 0;
