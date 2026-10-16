@@ -31,6 +31,7 @@ namespace SDG.Framework.Water
 		public static readonly int WATER_SURFACE_TILE_SIZE = 1024;
 
 		public GameObject waterPlane;
+		public PlanarReflection planarReflection;
 		/// <summary>
 		/// All water tiles and the planar reflection component reference this material.
 		/// </summary>
@@ -148,7 +149,19 @@ namespace SDG.Framework.Water
 			}
 		}
 
-		partial void SyncPlanarReflectionEnabledPartial();
+		private void SyncPlanarReflectionEnabledPartial()
+		{
+			if (planarReflection != null)
+			{
+				planarReflection.enabled = isReflectionVisible && GraphicsSettings.waterQuality == EGraphicQuality.ULTRA;
+				if (sharedMaterial != null && !planarReflection.enabled)
+				{
+					sharedMaterial.DisableKeyword("WATER_REFLECTIVE");
+					sharedMaterial.EnableKeyword("WATER_SIMPLE");
+					sharedMaterial.SetTexture(planarReflection.reflectionSampler, null);
+				}
+			}
+		}
 
 		internal void SyncPlanarReflectionEnabled()
 		{
@@ -163,7 +176,65 @@ namespace SDG.Framework.Water
 			}
 		}
 
-		partial void CreateUnity4Water();
+		private void CreateUnity4Water()
+		{
+			GameObject original = Resources.Load<GameObject>("Level_NoRedist/Water_Plane") ?? Resources.Load<GameObject>("Level/Water_Plane");
+			if (original == null)
+			{
+				return;
+			}
+			GameObject tilePrefab = Resources.Load<GameObject>("Level_NoRedist/Water_Tile") ?? Resources.Load<GameObject>("Level/Water_Tile");
+			if (tilePrefab == null)
+			{
+				return;
+			}
+
+			InstantiateParameters parameters = new InstantiateParameters
+			{
+				parent = transform,
+				worldSpace = false
+			};
+			waterPlane = Instantiate(original, new Vector3(0f, 0.5f, 0f), Quaternion.identity, parameters);
+			waterPlane.name = "Plane";
+			waterPlane.transform.localScale = Vector3.one;
+			planarReflection = waterPlane.GetComponent<PlanarReflection>();
+			int num = Mathf.Max(1, Mathf.FloorToInt(transform.localScale.x / (float)WATER_SURFACE_TILE_SIZE));
+			int num2 = Mathf.Max(1, Mathf.FloorToInt(transform.localScale.z / (float)WATER_SURFACE_TILE_SIZE));
+			float num3 = 1f / (float)num;
+			float num4 = 1f / (float)num2;
+			for (int i = 0; i < num; i++)
+			{
+				for (int j = 0; j < num2; j++)
+				{
+					GameObject gameObject = Instantiate(tilePrefab);
+					gameObject.name = "Tile_" + i + "_" + j;
+					gameObject.transform.parent = waterPlane.transform;
+					gameObject.transform.localPosition = new Vector3(-0.5f + num3 / 2f + (float)i * num3, 0f, -0.5f + num4 / 2f + (float)j * num4);
+					gameObject.transform.localRotation = Quaternion.identity;
+					gameObject.transform.localScale = new Vector3(0.01f * num3, 1f, 0.01f * num4);
+					if (sharedMaterial == null)
+					{
+						sharedMaterial = gameObject.GetComponent<Renderer>().material;
+					}
+					else
+					{
+						gameObject.GetComponent<Renderer>().material = sharedMaterial;
+					}
+					if (planarReflection != null)
+					{
+						WaterTile component = gameObject.GetComponent<WaterTile>();
+						if (component != null)
+						{
+							component.reflection = planarReflection;
+						}
+					}
+				}
+			}
+			if (planarReflection != null)
+			{
+				planarReflection.sharedMaterial = sharedMaterial;
+			}
+		}
 
 		private void CreateFallbackWaterPlanes()
 		{
