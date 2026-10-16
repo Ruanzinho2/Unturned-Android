@@ -271,11 +271,8 @@ namespace SDG.Unturned
 		/// Potentially useful for players running out of RAM, refer to:
 		/// https://github.com/SmartlyDressedGames/Unturned-3.x-Community/issues/1352#issuecomment-751138105
 		/// </summary>
-#if UNITY_ANDROID
-		private static CommandLineFlag shouldCollectGarbageAggressively = new CommandLineFlag(true, "-AggressiveGC");
-#else
 		private static CommandLineFlag shouldCollectGarbageAggressively = new CommandLineFlag(false, "-AggressiveGC");
-#endif
+
 
 		/// <summary>
 		/// Should modded spawn tables being inserted into parents be logged?
@@ -2233,15 +2230,15 @@ namespace SDG.Unturned
 				// Instead we now target 20 frames per second.
 				double timeSinceLastFrame = Time.realtimeSinceStartupAsDouble - previousFrameTime;
 #if UNITY_ANDROID
-				// On Android, yield more frequently (20ms instead of 50ms) to prevent freezing the main thread
-				// and run CleanupMemory every 10 frames to avoid Out-Of-Memory (LMK).
-				if (timeSinceLastFrame > 0.02)
+				// On Android, yield every 25ms to keep UI responsive and prevent Android ANR / Watchdog timeout.
+				// Crucially, NEVER call synchronous Resources.UnloadUnusedAssets() in the frame loop.
+				if (timeSinceLastFrame > 0.025)
 				{
 					SyncAssetDefinitionLoadingProgress();
 					++gcFrameCount;
-					if (gcFrameCount % 10 == 0 && shouldCollectGarbageAggressively)
+					if (gcFrameCount % 50 == 0)
 					{
-						CleanupMemory();
+						GC.Collect(0, GCCollectionMode.Optimized);
 					}
 					yield return null;
 					previousFrameTime = Time.realtimeSinceStartupAsDouble;
@@ -2399,7 +2396,12 @@ namespace SDG.Unturned
 				CheckForNpcErrors();
 			}
 
+#if UNITY_ANDROID
+			yield return Resources.UnloadUnusedAssets();
+			GC.Collect();
+#else
 			CleanupMemory();
+#endif
 
 			if (shouldResaveAssets && shouldParseMetadata)
 			{
