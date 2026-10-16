@@ -1937,8 +1937,13 @@ namespace SDG.Unturned
 			LoadingUI.NotifyLevelLoadingProgress(17 / STEPS);
 			yield return null;
 
+#if UNITY_ANDROID
+			yield return Resources.UnloadUnusedAssets();
+			System.GC.Collect();
+#else
 			Resources.UnloadUnusedAssets();
 			System.GC.Collect();
+#endif
 
 			LoadingUI.NotifyLevelLoadingProgress(18 / STEPS);
 			yield return null;
