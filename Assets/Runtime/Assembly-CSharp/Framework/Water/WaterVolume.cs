@@ -194,6 +194,8 @@ namespace SDG.Framework.Water
 
 					GameObject waterTile = Instantiate(waterTilePrefab, position, Quaternion.identity, instantiateParameters);
 					waterTile.name = "Tile_" + tile_x + "_" + tile_y;
+					waterTile.transform.localPosition = position;
+					waterTile.transform.localRotation = Quaternion.identity;
 					waterTile.transform.localScale = new Vector3(0.1f * scale_x, 1.0f, 0.1f * scale_y);
 					if (sharedMaterial == null)
 					{
