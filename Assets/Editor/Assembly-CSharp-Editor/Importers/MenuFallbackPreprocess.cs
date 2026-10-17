@@ -95,6 +95,12 @@ namespace SDG.Unturned
 
 					// Mesh is null, attempt to resolve
 					Mesh resolvedMesh = null;
+					string cleanName = mf.gameObject.name;
+					int parenIdx = cleanName.IndexOf(" (");
+					if (parenIdx > 0)
+					{
+						cleanName = cleanName.Substring(0, parenIdx);
+					}
 
 					// 1. Try resolving via exact GUID recorded in scene YAML
 					try
@@ -129,13 +135,6 @@ namespace SDG.Unturned
 					// 2. Try finding by matching GameObject name
 					if (resolvedMesh == null)
 					{
-						string cleanName = mf.gameObject.name;
-						int parenIdx = cleanName.IndexOf(" (");
-						if (parenIdx > 0)
-						{
-							cleanName = cleanName.Substring(0, parenIdx);
-						}
-
 						string directPath = $"Assets/Game/Sources/MainMenu/Meshes/{cleanName}.obj";
 						if (File.Exists(directPath))
 						{
