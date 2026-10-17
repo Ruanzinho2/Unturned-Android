@@ -460,17 +460,26 @@ namespace SDG.Unturned
 					path = PATH + path;
 				}
 
-				if (!Directory.Exists(Path.GetDirectoryName(path)))
+				string dir = Path.GetDirectoryName(path);
+				if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
 				{
-					Directory.CreateDirectory(Path.GetDirectoryName(path));
+					Directory.CreateDirectory(dir);
 				}
 
-				FileStream stream = new FileStream(path, FileMode.OpenOrCreate);
-				stream.Write(bytes, 0, size);
-				stream.SetLength(size);
-				stream.Flush();
-				stream.Close();
-				stream.Dispose();
+				if (File.Exists(path))
+				{
+					try
+					{
+						File.SetAttributes(path, FileAttributes.Normal);
+					}
+					catch { }
+				}
+
+				using (FileStream stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite))
+				{
+					stream.Write(bytes, 0, size);
+					stream.Flush();
+				}
 			}
 		}
 

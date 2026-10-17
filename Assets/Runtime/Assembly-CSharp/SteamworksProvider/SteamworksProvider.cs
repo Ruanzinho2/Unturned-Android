@@ -174,7 +174,11 @@ namespace SDG.SteamworksProvider
 			if (!appInfo.isDedicated)
 			{
 				browserService = new SteamworksBrowserService();
+#if UNITY_ANDROID
+				cloudService = new SDG.Provider.Services.Cloud.DebugCloudService();
+#else
 				cloudService = new SteamworksCloudService();
+#endif
 				communityService = new SteamworksCommunityService();
 				matchmakingService = new TempSteamworksMatchmaking();// new SteamworksMatchmakingService();
 				storeService = new SteamworksStoreService(appInfo);

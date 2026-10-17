@@ -2,7 +2,7 @@
 // This file is part of the U3 SDK: https://github.com/smartlydressedgames/u3-sdk/    //
 // Please refer to the included LICENSE.txt for copyright notice and license details. //
 ////////////////////////////////////////////////////////////////////////////////////////
-#if UNITY_EDITOR
+#if UNITY_EDITOR || UNITY_ANDROID
 using SDG.Unturned;
 using System.IO;
 
@@ -17,10 +17,14 @@ namespace SDG.Provider.Services.Cloud
 		public bool read(string path, byte[] data)
 		{
 			string absolutePath = makeAbsolutePath(path);
-			byte[] file_data = ReadWrite.readBytes(absolutePath, false, false);
-			if (file_data.Length != data.Length)
+			if (!File.Exists(absolutePath))
 			{
-				UnturnedLog.error("Cloud read {0} bytes from {1}, but expected {2} bytes", file_data.Length, absolutePath, data.Length);
+				return false;
+			}
+			byte[] file_data = ReadWrite.readBytes(absolutePath, false, false);
+			if (file_data == null || file_data.Length != data.Length)
+			{
+				UnturnedLog.error("Cloud read {0} bytes from {1}, but expected {2} bytes", file_data?.Length ?? 0, absolutePath, data.Length);
 				return false;
 			}
 			else
@@ -42,9 +46,14 @@ namespace SDG.Provider.Services.Cloud
 		public bool getSize(string path, out int size)
 		{
 			string absolutePath = makeAbsolutePath(path);
-			size = (int) new FileInfo(absolutePath).Length;
-			UnturnedLog.info("Cloud size of {0} is {1} bytes", absolutePath, size);
-			return true;
+			if (File.Exists(absolutePath))
+			{
+				size = (int) new FileInfo(absolutePath).Length;
+				UnturnedLog.info("Cloud size of {0} is {1} bytes", absolutePath, size);
+				return true;
+			}
+			size = 0;
+			return false;
 		}
 
 		public bool exists(string path, out bool exists)
@@ -65,18 +74,28 @@ namespace SDG.Provider.Services.Cloud
 
 		public override void initialize()
 		{
-			// Using this path because it is ignored by source control and SteamCMD.
+#if UNITY_ANDROID
+			basePath = Path.Combine(Path.GetFullPath(ReadWrite.PATH), "Cloud");
+#else
 			basePath = Path.Combine(Path.GetFullPath(ReadWrite.PATH), "Cloud", "Debug");
+#endif
+			if (!Directory.Exists(basePath))
+			{
+				Directory.CreateDirectory(basePath);
+			}
 			UnturnedLog.info("Cloud base path {0}", basePath);
 		}
 
 		private string makeAbsolutePath(string relativePath)
 		{
-			// Cannot use Path.Combine because Unturned relativePaths have '/' prefix.
-			return basePath + relativePath;
+			if (relativePath.StartsWith("/") || relativePath.StartsWith("\\"))
+			{
+				relativePath = relativePath.Substring(1);
+			}
+			return Path.Combine(basePath, relativePath);
 		}
 
 		private string basePath;
 	}
 }
-#endif // UNITY_EDITOR
+#endif // UNITY_EDITOR || UNITY_ANDROID

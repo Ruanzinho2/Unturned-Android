@@ -212,13 +212,22 @@ namespace SDG.Framework.Water
 					gameObject.transform.localPosition = new Vector3(-0.5f + num3 / 2f + (float)i * num3, 0f, -0.5f + num4 / 2f + (float)j * num4);
 					gameObject.transform.localRotation = Quaternion.identity;
 					gameObject.transform.localScale = new Vector3(0.01f * num3, 1f, 0.01f * num4);
-					if (sharedMaterial == null)
+					MeshFilter meshFilter = gameObject.GetComponent<MeshFilter>();
+					if (meshFilter != null && meshFilter.sharedMesh == null)
 					{
-						sharedMaterial = gameObject.GetComponent<Renderer>().material;
+						meshFilter.sharedMesh = GetOrCreateWaterMesh();
 					}
-					else
+					Renderer renderer = gameObject.GetComponent<Renderer>();
+					if (renderer != null)
 					{
-						gameObject.GetComponent<Renderer>().material = sharedMaterial;
+						if (sharedMaterial == null)
+						{
+							sharedMaterial = renderer.material;
+						}
+						else
+						{
+							renderer.material = sharedMaterial;
+						}
 					}
 					if (planarReflection != null)
 					{
@@ -230,10 +239,92 @@ namespace SDG.Framework.Water
 					}
 				}
 			}
+			if (sharedMaterial == null || sharedMaterial.shader == null || sharedMaterial.shader.name == "Hidden/InternalErrorShader")
+			{
+				Shader s = Shader.Find("Legacy Shaders/Transparent/Diffuse") ?? Shader.Find("Transparent/Diffuse") ?? Shader.Find("Standard");
+				if (s != null)
+				{
+					sharedMaterial = new Material(s);
+					sharedMaterial.color = new Color(0.21176f, 0.74711f, 1f, 0.588f);
+				}
+			}
 			if (planarReflection != null)
 			{
 				planarReflection.sharedMaterial = sharedMaterial;
 			}
+		}
+
+		private static Mesh _cachedWaterMesh;
+		public static Mesh GetOrCreateWaterMesh()
+		{
+			if (_cachedWaterMesh != null)
+			{
+				return _cachedWaterMesh;
+			}
+
+			int resolution = 50;
+			int vertCount = (resolution + 1) * (resolution + 1);
+			Vector3[] vertices = new Vector3[vertCount];
+			Vector2[] uvs = new Vector2[vertCount];
+			Vector3[] normals = new Vector3[vertCount];
+			int[] triangles = new int[resolution * resolution * 6 * 2];
+
+			float step = 100f / resolution;
+			int v = 0;
+			for (int z = 0; z <= resolution; z++)
+			{
+				float pz = -50f + z * step;
+				float vCoord = (float)z / resolution;
+				for (int x = 0; x <= resolution; x++)
+				{
+					float px = -50f + x * step;
+					float uCoord = (float)x / resolution;
+					vertices[v] = new Vector3(px, 0f, pz);
+					uvs[v] = new Vector2(uCoord, vCoord);
+					normals[v] = Vector3.up;
+					v++;
+				}
+			}
+
+			int t = 0;
+			for (int z = 0; z < resolution; z++)
+			{
+				for (int x = 0; x < resolution; x++)
+				{
+					int i0 = z * (resolution + 1) + x;
+					int i1 = i0 + 1;
+					int i2 = (z + 1) * (resolution + 1) + x;
+					int i3 = i2 + 1;
+
+					// Top side (visible from above)
+					triangles[t++] = i0;
+					triangles[t++] = i2;
+					triangles[t++] = i1;
+
+					triangles[t++] = i1;
+					triangles[t++] = i2;
+					triangles[t++] = i3;
+
+					// Bottom side (visible from below)
+					triangles[t++] = i0;
+					triangles[t++] = i1;
+					triangles[t++] = i2;
+
+					triangles[t++] = i1;
+					triangles[t++] = i3;
+					triangles[t++] = i2;
+				}
+			}
+
+			Mesh mesh = new Mesh();
+			mesh.name = "kraut_plane";
+			mesh.vertices = vertices;
+			mesh.uv = uvs;
+			mesh.normals = normals;
+			mesh.triangles = triangles;
+			mesh.RecalculateBounds();
+			_cachedWaterMesh = mesh;
+			return _cachedWaterMesh;
 		}
 
 		private void CreateFallbackWaterPlanes()

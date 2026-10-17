@@ -1,8 +1,16 @@
 fileFormatVersion: 2
 guid: 4d76115738e9479483c41f8d78efd11a
 ModelImporter:
-  serializedVersion: 22
-  internalIDToNameTable: []
+  serializedVersion: 21300
+  internalIDToNameTable:
+  - first:
+      43: 4300000
+    second: kraut_plane
   externalObjects: {}
   materials:
-    importMaterials: 0
+    materialImportMode: 0
+    materialName: 0
+    materialSearch: 1
+    materialLocation: 0
+  meshes:
+    fileIdsGeneration: 1
