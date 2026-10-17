@@ -76,7 +76,19 @@ namespace SDG.Unturned
 				SceneManager.LoadSceneAsync("Menu_NoHoliday", LoadSceneMode.Additive);
 			}
 #else // WITH_NOREDIST
-			SceneManager.LoadSceneAsync("Menu_Fallback", LoadSceneMode.Additive);
+			UnturnedLog.info("Loading additive fallback menu scene (Menu_Fallback)...");
+			AsyncOperation asyncOp = SceneManager.LoadSceneAsync("Menu_Fallback", LoadSceneMode.Additive);
+			if (asyncOp != null)
+			{
+				asyncOp.completed += (op) =>
+				{
+					UnturnedLog.info("Additive fallback menu scene (Menu_Fallback) loaded successfully.");
+				};
+			}
+			else
+			{
+				UnturnedLog.error("Failed to begin async loading of Menu_Fallback scene!");
+			}
 #endif // WITH_NOREDIST
 		}
 

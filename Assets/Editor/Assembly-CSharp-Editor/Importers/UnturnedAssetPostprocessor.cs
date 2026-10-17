@@ -39,4 +39,16 @@ public class UnturnedAssetPostprocessor : AssetPostprocessor
 			textureImporter.filterMode = FilterMode.Bilinear;
 		}
 	}
+
+	private void OnPreprocessModel()
+	{
+		if (assetPath.StartsWith("Assets/Game/Sources/MainMenu/Meshes/"))
+		{
+			ModelImporter modelImporter = (ModelImporter) assetImporter;
+			modelImporter.isReadable = true;
+			modelImporter.materialImportMode = ModelImporterMaterialImportMode.None;
+			modelImporter.animationType = ModelImporterAnimationType.None;
+		}
+	}
 }
+
