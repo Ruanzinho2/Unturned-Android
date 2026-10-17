@@ -1,0 +1,24 @@
+fileFormatVersion: 2
+guid: 5871af0712685bae970460bc190d156e
+ModelImporter:
+  serializedVersion: 21300
+  internalIDToNameTable:
+  - first:
+      1: 100000
+    second: //RootNode
+  - first:
+      4: 400000
+    second: //RootNode
+  - first:
+      23: 2300000
+    second: //RootNode
+  - first:
+      33: 3300000
+    second: //RootNode
+  - first:
+      43: 4300000
+    second: Pine_1_Foliage_1
+  externalObjects: {}
+  materials:
+    materialImportMode: 0
+  isReadable: 1

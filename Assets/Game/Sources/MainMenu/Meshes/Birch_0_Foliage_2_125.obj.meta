@@ -1,0 +1,24 @@
+fileFormatVersion: 2
+guid: 746c9591f8c0585ca741c3d7660610a0
+ModelImporter:
+  serializedVersion: 21300
+  internalIDToNameTable:
+  - first:
+      1: 100000
+    second: //RootNode
+  - first:
+      4: 400000
+    second: //RootNode
+  - first:
+      23: 2300000
+    second: //RootNode
+  - first:
+      33: 3300000
+    second: //RootNode
+  - first:
+      43: 4300000
+    second: Birch_0_Foliage_2
+  externalObjects: {}
+  materials:
+    materialImportMode: 0
+  isReadable: 1

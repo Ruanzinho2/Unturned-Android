@@ -1,0 +1,24 @@
+fileFormatVersion: 2
+guid: 2f7e9fe42e9257329b488cc8b61f716e
+ModelImporter:
+  serializedVersion: 21300
+  internalIDToNameTable:
+  - first:
+      1: 100000
+    second: //RootNode
+  - first:
+      4: 400000
+    second: //RootNode
+  - first:
+      23: 2300000
+    second: //RootNode
+  - first:
+      33: 3300000
+    second: //RootNode
+  - first:
+      43: 4300000
+    second: Model_1_Section_1_Alive
+  externalObjects: {}
+  materials:
+    materialImportMode: 0
+  isReadable: 1

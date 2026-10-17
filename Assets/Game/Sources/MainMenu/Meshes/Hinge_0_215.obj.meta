@@ -1,0 +1,24 @@
+fileFormatVersion: 2
+guid: be448945e61a5e9f888c687d2c14477d
+ModelImporter:
+  serializedVersion: 21300
+  internalIDToNameTable:
+  - first:
+      1: 100000
+    second: //RootNode
+  - first:
+      4: 400000
+    second: //RootNode
+  - first:
+      23: 2300000
+    second: //RootNode
+  - first:
+      33: 3300000
+    second: //RootNode
+  - first:
+      43: 4300000
+    second: Hinge_0
+  externalObjects: {}
+  materials:
+    materialImportMode: 0
+  isReadable: 1
