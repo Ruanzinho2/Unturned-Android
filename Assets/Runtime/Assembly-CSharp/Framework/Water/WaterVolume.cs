@@ -211,9 +211,10 @@ namespace SDG.Framework.Water
 					gameObject.transform.parent = waterPlane.transform;
 					gameObject.transform.localPosition = new Vector3(-0.5f + num3 / 2f + (float)i * num3, 0f, -0.5f + num4 / 2f + (float)j * num4);
 					gameObject.transform.localRotation = Quaternion.identity;
-					gameObject.transform.localScale = new Vector3(0.01f * num3, 1f, 0.01f * num4);
+					float scaleY = 1f / Mathf.Max(0.001f, waterPlane.transform.lossyScale.y);
+					gameObject.transform.localScale = new Vector3(0.01f * num3, scaleY, 0.01f * num4);
 					MeshFilter meshFilter = gameObject.GetComponent<MeshFilter>();
-					if (meshFilter != null && meshFilter.sharedMesh == null)
+					if (meshFilter != null && (meshFilter.sharedMesh == null || meshFilter.sharedMesh.vertexCount == 0))
 					{
 						meshFilter.sharedMesh = GetOrCreateWaterMesh();
 					}
@@ -241,11 +242,23 @@ namespace SDG.Framework.Water
 			}
 			if (sharedMaterial == null || sharedMaterial.shader == null || sharedMaterial.shader.name == "Hidden/InternalErrorShader")
 			{
-				Shader s = Shader.Find("Legacy Shaders/Transparent/Diffuse") ?? Shader.Find("Transparent/Diffuse") ?? Shader.Find("Standard");
+				Shader s = Shader.Find("Custom/Water_Fallback") ?? Shader.Find("Legacy Shaders/Transparent/Diffuse") ?? Shader.Find("Transparent/Diffuse") ?? Shader.Find("Standard");
 				if (s != null)
 				{
 					sharedMaterial = new Material(s);
 					sharedMaterial.color = new Color(0.21176f, 0.74711f, 1f, 0.588f);
+					if (sharedMaterial.HasProperty("_BaseColor"))
+					{
+						sharedMaterial.SetColor("_BaseColor", new Color(0.21176f, 0.74711f, 1f, 0.588f));
+					}
+				}
+			}
+			else if (sharedMaterial.shader.name == "Legacy Shaders/Transparent/Diffuse" || sharedMaterial.shader.name == "Transparent/Diffuse")
+			{
+				Shader s = Shader.Find("Custom/Water_Fallback");
+				if (s != null)
+				{
+					sharedMaterial.shader = s;
 				}
 			}
 			if (planarReflection != null)

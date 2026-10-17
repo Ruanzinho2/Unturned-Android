@@ -86,6 +86,18 @@ public class PlanarReflection : MonoBehaviour
 
 	public void WaterTileBeingRendered(Transform tr, Camera currentCam)
 	{
+#if UNITY_ANDROID
+		if (GraphicsSettings.waterQuality != EGraphicQuality.ULTRA)
+		{
+			if (reflectionCamera != null && sharedMaterial != null)
+			{
+				sharedMaterial.DisableKeyword("WATER_REFLECTIVE");
+				sharedMaterial.EnableKeyword("WATER_SIMPLE");
+				sharedMaterial.SetTexture(reflectionSampler, null);
+			}
+			return;
+		}
+#endif
 		if (enabled && currentCam.CompareTag("MainCamera"))
 		{
 			if (!helped)
