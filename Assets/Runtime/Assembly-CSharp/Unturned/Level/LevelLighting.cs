@@ -753,10 +753,6 @@ namespace SDG.Unturned
 				}
 
 				volume.sharedMaterial.SetColor(name, color);
-				if (name == "_BaseColor" && volume.sharedMaterial.HasProperty("_Color"))
-				{
-					volume.sharedMaterial.SetColor("_Color", color);
-				}
 			}
 		}
 

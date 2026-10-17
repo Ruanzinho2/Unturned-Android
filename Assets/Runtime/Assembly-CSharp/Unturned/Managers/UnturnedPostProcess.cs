@@ -399,12 +399,10 @@ namespace SDG.Unturned
 					dof.focusDistance.Override(1.0f);
 				}
 
-#if !UNITY_ANDROID
 				if (layer != EPostProcessLayer.Viewmodel)
 				{
 					profile.AddSettings<SkyFog>();
 				}
-#endif
 
 				if (layer == EPostProcessLayer.Base)
 				{

@@ -186,7 +186,9 @@ ItemLinks.txt
 # Local file for testing Steam inventory items
 /Builds/Shared/TestInventory.dat
 
-
+# Essential resources auto-imported from package
+/Assets/TextMesh Pro
+/Assets/TextMesh Pro.meta
 
 # Unity creates these files during export
 /Assets/Resources/PerformanceTestRunInfo*

@@ -996,17 +996,8 @@ namespace SDG.Framework.Landscapes
 			}
 		}
 
-		private void SubscribePlanarReflectionEvents()
-		{
-			PlanarReflection.preRender += handlePlanarReflectionPreRender;
-			PlanarReflection.postRender += handlePlanarReflectionPostRender;
-		}
-
-		private void UnsubscribePlanarReflectionEvents()
-		{
-			PlanarReflection.preRender -= handlePlanarReflectionPreRender;
-			PlanarReflection.postRender -= handlePlanarReflectionPostRender;
-		}
+		partial void SubscribePlanarReflectionEvents();
+		partial void UnsubscribePlanarReflectionEvents();
 
 		protected void handlePlanarReflectionPreRender()
 		{
