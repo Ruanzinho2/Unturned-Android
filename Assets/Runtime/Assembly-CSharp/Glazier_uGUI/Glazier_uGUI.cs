@@ -456,12 +456,51 @@ namespace SDG.Unturned
 			debugTextComponent.extraPadding = GlazierConst_uGUI.DefaultExtraPadding;
 		}
 
+		private void EnsureValidFontShader(Material mat)
+		{
+			if (mat == null)
+			{
+				return;
+			}
+
+			if (mat.shader == null || !mat.shader.isSupported || mat.shader.name == "Hidden/InternalErrorShader" || mat.shader.name.IndexOf("Error", System.StringComparison.OrdinalIgnoreCase) >= 0)
+			{
+				Shader shader = Shader.Find("TextMeshPro/Mobile/Distance Field");
+				if (shader == null || !shader.isSupported)
+				{
+					shader = Shader.Find("TextMeshPro/Distance Field");
+				}
+
+				if (shader != null && shader.isSupported)
+				{
+					UnturnedLog.info($"Glazier_uGUI: Repaired material '{mat.name}' shader from '{(mat.shader != null ? mat.shader.name : "null")}' to '{shader.name}'");
+					mat.shader = shader;
+				}
+				else
+				{
+					UnturnedLog.warn($"Glazier_uGUI: Could not find valid fallback shader for material '{mat.name}' (current: {(mat.shader != null ? mat.shader.name : "null")})");
+				}
+			}
+		}
+
 		private void CreateFontMaterials()
 		{
 			fontMaterial_Default = Resources.Load<Material>("UI/Glazier_uGUI/Font_Default");
 			fontMaterial_Outline = Instantiate(Resources.Load<Material>("UI/Glazier_uGUI/Font_Outline"));
 			fontMaterial_Shadow = Instantiate(Resources.Load<Material>("UI/Glazier_uGUI/Font_Shadow"));
 			fontMaterial_Tooltip = Instantiate(Resources.Load<Material>("UI/Glazier_uGUI/Font_Tooltip"));
+
+			EnsureValidFontShader(fontMaterial_Default);
+			EnsureValidFontShader(fontMaterial_Outline);
+			EnsureValidFontShader(fontMaterial_Shadow);
+			EnsureValidFontShader(fontMaterial_Tooltip);
+
+			TMP_FontAsset fontAsset = GlazierResources_uGUI.Font;
+			if (fontAsset != null && fontAsset.material != null)
+			{
+				EnsureValidFontShader(fontAsset.material);
+			}
+
 			SynchronizeFontMaterials();
 		}
 

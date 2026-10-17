@@ -76,7 +76,15 @@ namespace SDG.Unturned
 				SceneManager.LoadSceneAsync("Menu_NoHoliday", LoadSceneMode.Additive);
 			}
 #else // WITH_NOREDIST
-			SceneManager.LoadSceneAsync("Menu_Fallback", LoadSceneMode.Additive);
+			UnturnedLog.info("Loading additive 3D menu diorama scene (DefaultMenu / Menu_Fallback)");
+			if (Application.CanStreamedLevelBeLoaded("DefaultMenu"))
+			{
+				SceneManager.LoadSceneAsync("DefaultMenu", LoadSceneMode.Additive);
+			}
+			else
+			{
+				SceneManager.LoadSceneAsync("Menu_Fallback", LoadSceneMode.Additive);
+			}
 #endif // WITH_NOREDIST
 		}
 
