@@ -165,6 +165,68 @@ namespace SDG.Framework.Water
 
 		partial void CreateUnity4Water();
 
+		private static Mesh _cachedProceduralWaterMesh;
+		private static Mesh GetOrCreateProceduralWaterMesh()
+		{
+			if (_cachedProceduralWaterMesh != null)
+			{
+				return _cachedProceduralWaterMesh;
+			}
+
+			const int subdivisions = 16;
+			const float size = 10.0f; // Matches standard Unity Plane 10x10 size
+			const float halfSize = size * 0.5f;
+			int vertCount = (subdivisions + 1) * (subdivisions + 1);
+			Vector3[] vertices = new Vector3[vertCount];
+			Vector3[] normals = new Vector3[vertCount];
+			Vector2[] uvs = new Vector2[vertCount];
+
+			for (int z = 0; z <= subdivisions; z++)
+			{
+				float zPos = -halfSize + (z * (size / subdivisions));
+				float v = (float)z / subdivisions;
+				for (int x = 0; x <= subdivisions; x++)
+				{
+					float xPos = -halfSize + (x * (size / subdivisions));
+					float u = (float)x / subdivisions;
+					int idx = z * (subdivisions + 1) + x;
+					vertices[idx] = new Vector3(xPos, 0f, zPos);
+					normals[idx] = Vector3.up;
+					uvs[idx] = new Vector2(u, v);
+				}
+			}
+
+			int[] triangles = new int[subdivisions * subdivisions * 6];
+			int triIdx = 0;
+			for (int z = 0; z < subdivisions; z++)
+			{
+				for (int x = 0; x < subdivisions; x++)
+				{
+					int bl = z * (subdivisions + 1) + x;
+					int br = bl + 1;
+					int tl = (z + 1) * (subdivisions + 1) + x;
+					int tr = tl + 1;
+
+					triangles[triIdx++] = bl;
+					triangles[triIdx++] = tl;
+					triangles[triIdx++] = br;
+
+					triangles[triIdx++] = br;
+					triangles[triIdx++] = tl;
+					triangles[triIdx++] = tr;
+				}
+			}
+
+			_cachedProceduralWaterMesh = new Mesh();
+			_cachedProceduralWaterMesh.name = "Water_Procedural_Plane_Mesh";
+			_cachedProceduralWaterMesh.vertices = vertices;
+			_cachedProceduralWaterMesh.normals = normals;
+			_cachedProceduralWaterMesh.uv = uvs;
+			_cachedProceduralWaterMesh.triangles = triangles;
+			_cachedProceduralWaterMesh.RecalculateBounds();
+			return _cachedProceduralWaterMesh;
+		}
+
 		private void CreateFallbackWaterPlanes()
 		{
 			waterPlane = new GameObject("Plane");
@@ -179,11 +241,6 @@ namespace SDG.Framework.Water
 			float scale_y = 1f / size_y;
 
 			GameObject waterTilePrefab = Resources.Load<GameObject>("Level/Water_Fallback");
-			if (waterTilePrefab == null)
-			{
-				return;
-			}
-
 			InstantiateParameters instantiateParameters = new InstantiateParameters()
 			{
 				parent = waterPlane.transform,
@@ -191,6 +248,26 @@ namespace SDG.Framework.Water
 			};
 
 			float localScaleY = (transform.localScale.y > 0.001f) ? (1.0f / transform.localScale.y) : 1.0f;
+			Mesh proceduralMesh = GetOrCreateProceduralWaterMesh();
+
+			if (sharedMaterial == null && waterTilePrefab != null)
+			{
+				Renderer prefabRenderer = waterTilePrefab.GetComponent<Renderer>();
+				if (prefabRenderer != null)
+				{
+					sharedMaterial = prefabRenderer.sharedMaterial;
+				}
+			}
+
+			if (sharedMaterial == null)
+			{
+				Shader waterShader = Shader.Find("Custom/Water_Fallback");
+				if (waterShader != null)
+				{
+					sharedMaterial = new Material(waterShader);
+					sharedMaterial.name = "Water_Fallback_Auto";
+				}
+			}
 
 			for (int tile_x = 0; tile_x < size_x; tile_x++)
 			{
@@ -200,11 +277,32 @@ namespace SDG.Framework.Water
 																	 0,
 																	 -0.5f + (scale_y / 2) + (tile_y * scale_y));
 
-					GameObject waterTile = Instantiate(waterTilePrefab, position, Quaternion.identity, instantiateParameters);
+					GameObject waterTile;
+					if (waterTilePrefab != null)
+					{
+						waterTile = Instantiate(waterTilePrefab, position, Quaternion.identity, instantiateParameters);
+					}
+					else
+					{
+						waterTile = new GameObject("Tile_" + tile_x + "_" + tile_y);
+						waterTile.transform.parent = waterPlane.transform;
+						waterTile.layer = 4;
+						waterTile.AddComponent<MeshFilter>();
+						waterTile.AddComponent<MeshRenderer>();
+					}
+
 					waterTile.name = "Tile_" + tile_x + "_" + tile_y;
+					waterTile.layer = 4;
 					waterTile.transform.localPosition = position;
 					waterTile.transform.localRotation = Quaternion.identity;
 					waterTile.transform.localScale = new Vector3(0.1f * scale_x, localScaleY, 0.1f * scale_y);
+
+					MeshFilter meshFilter = waterTile.GetComponent<MeshFilter>();
+					if (meshFilter != null)
+					{
+						meshFilter.sharedMesh = proceduralMesh;
+					}
+
 					Renderer tileRenderer = waterTile.GetComponent<Renderer>();
 					if (tileRenderer != null)
 					{
