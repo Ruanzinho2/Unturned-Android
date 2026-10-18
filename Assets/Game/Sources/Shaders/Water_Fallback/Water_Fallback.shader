@@ -40,6 +40,9 @@ Shader "Custom/Water_Fallback"
         _GSpeed ("Wave Speed", Vector) = (1.20, 1.45, 1.05, 0.80)
         _GDirectionAB ("Wave Direction AB", Vector) = (0.25, 0.85, 0.90, 0.20)
         _GDirectionCD ("Wave Direction CD", Vector) = (0.10, 0.95, 0.55, 0.55)
+
+        [Header(Quality Settings)]
+        _WaterQualityLevel ("Water Quality Level (0=Low, 1=Med, 2=High, 3=Ultra)", Float) = 2.0
     }
     SubShader
     {
@@ -65,6 +68,7 @@ Shader "Custom/Water_Fallback"
             #pragma fragment frag
             #pragma multi_compile_fog
             #pragma multi_compile_fwdbase
+            #pragma multi_compile _ _WATER_QUALITY_LOW _WATER_QUALITY_MEDIUM _WATER_QUALITY_HIGH _WATER_QUALITY_ULTRA
             #pragma target 3.0
 
             #include "UnityCG.cginc"
@@ -124,7 +128,7 @@ Shader "Custom/Water_Fallback"
 
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
 
-            void EvaluateGerstnerWaves(
+            void EvaluateGerstnerWaves4(
                 float3 worldPos,
                 out float3 waveDisp,
                 out float3 waveNormal)
@@ -169,6 +173,44 @@ Shader "Custom/Water_Fallback"
                 waveNormal = normalize(float3(-dNx, 1.0 - dNy, -dNz));
             }
 
+            void EvaluateGerstnerWaves2(
+                float3 worldPos,
+                out float3 waveDisp,
+                out float3 waveNormal)
+            {
+                float2 p = worldPos.xz;
+
+                float lAB_xy = max(0.0001, length(_GDirectionAB.xy));
+                float lAB_zw = max(0.0001, length(_GDirectionAB.zw));
+
+                float2 d0 = _GDirectionAB.xy / lAB_xy;
+                float2 d1 = _GDirectionAB.zw / lAB_zw;
+
+                float2 freq = max(_GFrequency.xy, float2(0.0001, 0.0001));
+                float2 speed = freq * _GSpeed.xy * _Time.y;
+
+                float2 dotP = float2(dot(d0, p), dot(d1, p));
+                float2 phase = freq * dotP + speed;
+
+                float2 sinP = sin(phase);
+                float2 cosP = cos(phase);
+
+                float2 QA = _GAmplitude.xy * _GSteepness.xy;
+
+                float dx = dot(QA, float2(d0.x * cosP.x, d1.x * cosP.y));
+                float dz = dot(QA, float2(d0.y * cosP.x, d1.y * cosP.y));
+                float dy = dot(_GAmplitude.xy, sinP);
+
+                waveDisp = float3(dx, dy, dz) * _GerstnerIntensity;
+
+                float2 WA = freq * _GAmplitude.xy;
+                float dNx = dot(WA, float2(d0.x * cosP.x, d1.x * cosP.y));
+                float dNz = dot(WA, float2(d0.y * cosP.x, d1.y * cosP.y));
+                float dNy = dot(QA * freq, sinP);
+
+                waveNormal = normalize(float3(-dNx, 1.0 - dNy, -dNz));
+            }
+
             v2f vert(appdata v)
             {
                 v2f o;
@@ -176,7 +218,18 @@ Shader "Custom/Water_Fallback"
 
                 float3 waveDisp;
                 float3 waveNormal;
-                EvaluateGerstnerWaves(worldPos.xyz, waveDisp, waveNormal);
+
+                #if defined(_WATER_QUALITY_LOW)
+                // Low quality: completely flat plane, zero trigonometry in vertex shader
+                waveDisp = float3(0.0, 0.0, 0.0);
+                waveNormal = float3(0.0, 1.0, 0.0);
+                #elif defined(_WATER_QUALITY_MEDIUM)
+                // Medium quality: 2 Gerstner waves (half the trigonometry)
+                EvaluateGerstnerWaves2(worldPos.xyz, waveDisp, waveNormal);
+                #else
+                // High / Ultra / Default: 4 Gerstner waves
+                EvaluateGerstnerWaves4(worldPos.xyz, waveDisp, waveNormal);
+                #endif
 
                 worldPos.xyz += waveDisp;
                 o.worldPos = worldPos.xyz;
@@ -192,7 +245,78 @@ Shader "Custom/Water_Fallback"
             {
                 float3 viewDir = normalize(_WorldSpaceCameraPos - i.worldPos);
 
-                // Two octaves of fine procedural surface ripples
+                // Light direction (from LevelLighting or sun/moon)
+                float3 lightDir = normalize(_WorldLightDir.xyz);
+                if (dot(lightDir, lightDir) < 0.01)
+                {
+                    lightDir = normalize(float3(0.35, 0.85, -0.25));
+                }
+
+                fixed4 baseCol = (_BaseColor.a > 0.01) ? _BaseColor : _Color;
+                if (baseCol.a < 0.01) baseCol.a = 0.65;
+
+                #if defined(_WATER_QUALITY_LOW)
+                // ==================== LOW QUALITY ====================
+                // Zero noise sampling, zero ripples, direct Blinn-Phong lighting
+                float3 normal = (dot(float3(0.0, 1.0, 0.0), viewDir) >= 0.0) ? float3(0.0, 1.0, 0.0) : float3(0.0, -1.0, 0.0);
+                float3 halfDir = normalize(lightDir + viewDir);
+                float NdotH = max(0.0, dot(normal, halfDir));
+                float spec = pow(NdotH, clamp(_Shininess, 4.0, 128.0));
+                fixed3 specCol = (_SpecularColor.a > 0.01) ? _SpecularColor.rgb : fixed3(1.0, 1.0, 1.0);
+
+                float NdotL = max(0.0, dot(normal, lightDir));
+                float3 litWater = baseCol.rgb * (0.50 + 0.50 * NdotL) + spec * specCol * _SpecularColor.a * 0.45;
+                float finalAlpha = max(baseCol.a, 0.70);
+
+                fixed4 result = fixed4(litWater, finalAlpha);
+                UNITY_APPLY_FOG(i.fogCoord, result);
+                return result;
+
+                #elif defined(_WATER_QUALITY_MEDIUM)
+                // ==================== MEDIUM QUALITY ====================
+                // Single-octave ripple, fast quadratic Fresnel, smoothstep crest foam
+                float t = _Time.y * _RippleSpeed;
+                float2 uv1 = i.worldPos.xz * (_RippleScale * 0.4) + float2(t * 0.35, t * 0.25);
+                float w1 = sin(uv1.x + uv1.y * 1.2);
+                float3 rippleNormal = normalize(float3(w1 * _RippleStrength * 0.7, 1.0, w1 * _RippleStrength * 0.7));
+                float3 normal = normalize(float3(i.worldNormal.xz + rippleNormal.xz * 0.5, i.worldNormal.y));
+                normal = (dot(normal, viewDir) >= 0.0) ? normal : -normal;
+
+                float3 halfDir = normalize(lightDir + viewDir);
+                float NdotH = max(0.0, dot(normal, halfDir));
+                float spec = pow(NdotH, clamp(_Shininess, 4.0, 128.0));
+                fixed3 specCol = (_SpecularColor.a > 0.01) ? _SpecularColor.rgb : fixed3(1.0, 1.0, 1.0);
+                float3 specular = spec * specCol * _SpecularColor.a;
+
+                float NdotV = max(0.0, dot(normal, viewDir));
+                float oneMinusV = 1.0 - NdotV;
+                float fresnel = clamp(_FresnelBias + _FresnelScale * (oneMinusV * oneMinusV), 0.0, 1.0);
+
+                fixed3 deepCol = (_DeepColor.a > 0.01) ? _DeepColor.rgb : (baseCol.rgb * 0.45);
+                fixed3 reflCol = (_ReflectionColor.a > 0.01) ? _ReflectionColor.rgb : (baseCol.rgb * 1.35);
+
+                float NdotL = max(0.0, dot(normal, lightDir));
+                float lightIntensity = 0.45 + 0.55 * NdotL;
+                float3 shallowColor = baseCol.rgb * lightIntensity;
+                float3 waterBody = lerp(deepCol * lightIntensity, shallowColor, 0.75);
+                float3 litWater = lerp(waterBody, reflCol, fresnel * 0.50) + specular;
+
+                float crestFactor = saturate((i.waveDispY - _FoamCrestThreshold) / max(0.01, 1.0 - _FoamCrestThreshold));
+                float crestFoam = crestFactor * _FoamCrestIntensity * 0.75;
+                fixed4 foamCol = (_FoamColor.a > 0.01) ? _FoamColor : ((_Foam.a > 0.01) ? _Foam : fixed4(0.92, 0.97, 1.0, 0.90));
+                float totalFoam = saturate(crestFoam * _FoamIntensity);
+
+                float3 finalRGB = lerp(litWater, foamCol.rgb, totalFoam);
+                float alphaBase = max(baseCol.a, 0.65);
+                float finalAlpha = saturate(alphaBase + fresnel * 0.20 + totalFoam * 0.35);
+
+                fixed4 result = fixed4(finalRGB, finalAlpha);
+                UNITY_APPLY_FOG(i.fogCoord, result);
+                return result;
+
+                #else
+                // ==================== HIGH & ULTRA QUALITY ====================
+                // Dual-octave ripples, full Fresnel power, procedural noise crest foam
                 float t = _Time.y * _RippleSpeed;
                 float2 uv1 = i.worldPos.xz * (_RippleScale * 0.4) + float2(t * 0.35, t * 0.25);
                 float2 uv2 = i.worldPos.xz * (_RippleScale * 0.7) - float2(t * 0.20, -t * 0.30);
@@ -201,20 +325,9 @@ Shader "Custom/Water_Fallback"
                 float w2 = cos(uv2.x * 1.1 - uv2.y);
                 float3 rippleNormal = normalize(float3((w1 + w2) * _RippleStrength, 1.0, (w1 - w2) * _RippleStrength));
 
-                // Combine wave geometric normal and fine ripple normal
                 float3 normal = normalize(float3(i.worldNormal.xz + rippleNormal.xz * 0.5, i.worldNormal.y));
-
-                // Two-sided shading: flip normal when camera is underwater
                 normal = (dot(normal, viewDir) >= 0.0) ? normal : -normal;
 
-                // Light direction (from LevelLighting or sun/moon)
-                float3 lightDir = normalize(_WorldLightDir.xyz);
-                if (dot(lightDir, lightDir) < 0.01)
-                {
-                    lightDir = normalize(float3(0.35, 0.85, -0.25));
-                }
-
-                // Blinn-Phong specular highlight
                 float3 halfDir = normalize(lightDir + viewDir);
                 float NdotH = max(0.0, dot(normal, halfDir));
                 float shininess = clamp(_Shininess, 4.0, 256.0);
@@ -223,13 +336,9 @@ Shader "Custom/Water_Fallback"
                 fixed3 specCol = (_SpecularColor.a > 0.01) ? _SpecularColor.rgb : fixed3(1.0, 1.0, 1.0);
                 float3 specular = spec * specCol * _SpecularColor.a;
 
-                // Fresnel reflection approximation
                 float NdotV = max(0.0, dot(normal, viewDir));
                 float fresnel = clamp(_FresnelBias + _FresnelScale * pow(1.0 - NdotV, clamp(_FresnelPower, 0.5, 6.0)), 0.0, 1.0);
 
-                // Autonomous water colors: ensures water never turns black even without Forward pixel lights
-                fixed4 baseCol = (_BaseColor.a > 0.01) ? _BaseColor : _Color;
-                if (baseCol.a < 0.01) baseCol.a = 0.65;
                 fixed3 deepCol = (_DeepColor.a > 0.01) ? _DeepColor.rgb : (baseCol.rgb * 0.45);
                 fixed3 reflCol = (_ReflectionColor.a > 0.01) ? _ReflectionColor.rgb : (baseCol.rgb * 1.35);
 
@@ -238,19 +347,15 @@ Shader "Custom/Water_Fallback"
 
                 float3 shallowColor = baseCol.rgb * lightIntensity;
                 float3 waterBody = lerp(deepCol * lightIntensity, shallowColor, 0.75);
-
-                // Combine body color, sky reflection and specular highlight
                 float3 litWater = lerp(waterBody, reflCol, fresnel * 0.60) + specular;
 
-                // Procedural crest foam on wave peaks
                 float crestFactor = saturate((i.waveDispY - _FoamCrestThreshold) / max(0.01, 1.0 - _FoamCrestThreshold));
                 float2 noiseUV = i.worldPos.xz * _FoamNoiseScale + _Time.y * _FoamNoiseSpeed * float2(0.2, 0.15);
                 float noise = frac(sin(dot(noiseUV, float2(12.9898, 78.233))) * 43758.5453);
                 float crestFoam = pow(crestFactor, 1.4) * _FoamCrestIntensity * saturate(noise + 0.4);
 
-                // Safe depth-tested shoreline edge foam
                 float shoreFoam = 0.0;
-                #if (defined(SOFTPARTICLES_ON) || defined(_CAMERA_DEPTH_ON)) && !defined(SHADER_API_MOBILE) && !defined(SHADER_API_VULKAN) && !defined(SHADER_API_GLES3)
+                #if defined(_WATER_QUALITY_ULTRA) && (defined(SOFTPARTICLES_ON) || defined(_CAMERA_DEPTH_ON)) && !defined(SHADER_API_MOBILE) && !defined(SHADER_API_VULKAN) && !defined(SHADER_API_GLES3)
                 float sceneZ = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, UNITY_PROJ_COORD(i.screenPos)));
                 float partZ = i.screenPos.w;
                 float depthDiff = sceneZ - partZ;
@@ -261,7 +366,6 @@ Shader "Custom/Water_Fallback"
                 }
                 #endif
 
-                // Foam tinting and alpha blending
                 fixed4 foamCol = (_FoamColor.a > 0.01) ? _FoamColor : ((_Foam.a > 0.01) ? _Foam : fixed4(0.92, 0.97, 1.0, 0.90));
                 float totalFoam = saturate((crestFoam + shoreFoam) * _FoamIntensity);
 
@@ -272,6 +376,7 @@ Shader "Custom/Water_Fallback"
                 fixed4 result = fixed4(finalRGB, finalAlpha);
                 UNITY_APPLY_FOG(i.fogCoord, result);
                 return result;
+                #endif
             }
             ENDCG
         }

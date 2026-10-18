@@ -134,18 +134,38 @@ namespace SDG.Framework.Water
 				return;
 
 			EGraphicQuality waterQuality = GraphicsSettings.waterQuality;
+
+			sharedMaterial.DisableKeyword("_WATER_QUALITY_LOW");
+			sharedMaterial.DisableKeyword("_WATER_QUALITY_MEDIUM");
+			sharedMaterial.DisableKeyword("_WATER_QUALITY_HIGH");
+			sharedMaterial.DisableKeyword("_WATER_QUALITY_ULTRA");
+
 			if (waterQuality == EGraphicQuality.LOW)
 			{
+				sharedMaterial.EnableKeyword("_WATER_QUALITY_LOW");
+				sharedMaterial.SetFloat("_WaterQualityLevel", 0f);
 				sharedMaterial.shader.maximumLOD = 201;
 			}
 			else if (waterQuality == EGraphicQuality.MEDIUM)
 			{
+				sharedMaterial.EnableKeyword("_WATER_QUALITY_MEDIUM");
+				sharedMaterial.SetFloat("_WaterQualityLevel", 1f);
 				sharedMaterial.shader.maximumLOD = 301;
 			}
-			else if (waterQuality == EGraphicQuality.HIGH || waterQuality == EGraphicQuality.ULTRA)
+			else if (waterQuality == EGraphicQuality.HIGH)
 			{
+				sharedMaterial.EnableKeyword("_WATER_QUALITY_HIGH");
+				sharedMaterial.SetFloat("_WaterQualityLevel", 2f);
+				sharedMaterial.shader.maximumLOD = 401;
+			}
+			else // ULTRA
+			{
+				sharedMaterial.EnableKeyword("_WATER_QUALITY_ULTRA");
+				sharedMaterial.SetFloat("_WaterQualityLevel", 3f);
 				sharedMaterial.shader.maximumLOD = 501;
 			}
+
+			sharedMaterial.renderQueue = 2990;
 		}
 
 		partial void SyncPlanarReflectionEnabledPartial();

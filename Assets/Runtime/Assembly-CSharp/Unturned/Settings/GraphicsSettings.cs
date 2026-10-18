@@ -920,14 +920,37 @@ namespace SDG.Unturned
 			SDG.Framework.Foliage.FoliageSettings.focusDistance = farClipPlane;
 			SDG.Framework.Foliage.FoliageSettings.drawFocus = foliageFocus;
 
-			// Update water shader global keywords
-			if (waterQuality == EGraphicQuality.LOW || waterQuality == EGraphicQuality.MEDIUM)
+			// Update water shader global keywords and quality level
+			Shader.DisableKeyword("_WATER_QUALITY_LOW");
+			Shader.DisableKeyword("_WATER_QUALITY_MEDIUM");
+			Shader.DisableKeyword("_WATER_QUALITY_HIGH");
+			Shader.DisableKeyword("_WATER_QUALITY_ULTRA");
+
+			if (waterQuality == EGraphicQuality.LOW)
 			{
+				Shader.EnableKeyword("_WATER_QUALITY_LOW");
+				Shader.SetGlobalFloat("_WaterQualityLevel", 0f);
 				Shader.EnableKeyword("WATER_EDGEBLEND_OFF");
 				Shader.DisableKeyword("WATER_EDGEBLEND_ON");
 			}
-			else if (waterQuality == EGraphicQuality.HIGH || waterQuality == EGraphicQuality.ULTRA)
+			else if (waterQuality == EGraphicQuality.MEDIUM)
 			{
+				Shader.EnableKeyword("_WATER_QUALITY_MEDIUM");
+				Shader.SetGlobalFloat("_WaterQualityLevel", 1f);
+				Shader.EnableKeyword("WATER_EDGEBLEND_OFF");
+				Shader.DisableKeyword("WATER_EDGEBLEND_ON");
+			}
+			else if (waterQuality == EGraphicQuality.HIGH)
+			{
+				Shader.EnableKeyword("_WATER_QUALITY_HIGH");
+				Shader.SetGlobalFloat("_WaterQualityLevel", 2f);
+				Shader.EnableKeyword("WATER_EDGEBLEND_OFF");
+				Shader.DisableKeyword("WATER_EDGEBLEND_ON");
+			}
+			else if (waterQuality == EGraphicQuality.ULTRA)
+			{
+				Shader.EnableKeyword("_WATER_QUALITY_ULTRA");
+				Shader.SetGlobalFloat("_WaterQualityLevel", 3f);
 				if (SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.Depth))
 				{
 					Shader.EnableKeyword("WATER_EDGEBLEND_ON");
