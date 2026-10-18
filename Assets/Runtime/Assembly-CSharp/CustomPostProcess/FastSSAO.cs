@@ -76,7 +76,7 @@ namespace SDG.Unturned
 			context.command.BlitFullscreenTriangle(rt0Id, rt1Id, sheet, 1);
 
 			// Pass 2: Multiply AO with source onto destination
-			sheet.properties.SetTexture(aoTexId, rt1Id);
+			context.command.SetGlobalTexture(aoTexId, rt1Id);
 			context.command.BlitFullscreenTriangle(context.source, context.destination, sheet, 2);
 
 			context.command.ReleaseTemporaryRT(rt0Id);

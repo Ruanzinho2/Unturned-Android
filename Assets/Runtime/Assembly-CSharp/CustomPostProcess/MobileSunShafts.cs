@@ -98,7 +98,7 @@ namespace SDG.Unturned
 			}
 
 			// Pass 3: Composite screen blend onto destination
-			sheet.properties.SetTexture(colorBufferId, finalShaftsRT);
+			context.command.SetGlobalTexture(colorBufferId, finalShaftsRT);
 			context.command.BlitFullscreenTriangle(context.source, context.destination, sheet, 3);
 
 			context.command.ReleaseTemporaryRT(rt0Id);
