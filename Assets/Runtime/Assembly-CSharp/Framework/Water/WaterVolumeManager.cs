@@ -74,7 +74,6 @@ namespace SDG.Framework.Water
 			if (!Dedicator.IsDedicatedServer)
 			{
 				oldWaterQuality = GraphicsSettings.waterQuality;
-				wasPlanarReflectionEnabled = oldWaterQuality == EGraphicQuality.ULTRA;
 				GraphicsSettings.graphicsSettingsApplied += OnGraphicsSettingsApplied;
 			}
 		}
@@ -90,20 +89,9 @@ namespace SDG.Framework.Water
 				{
 					volume.SyncWaterQuality();
 				}
-
-				bool newPlanarReflectionEnabled = newWaterQuality == EGraphicQuality.ULTRA;
-				if (wasPlanarReflectionEnabled != newPlanarReflectionEnabled)
-				{
-					wasPlanarReflectionEnabled = newPlanarReflectionEnabled;
-					foreach (WaterVolume volume in allVolumes)
-					{
-						volume.SyncPlanarReflectionEnabled();
-					}
-				}
 			}
 		}
 
 		private EGraphicQuality oldWaterQuality;
-		private bool wasPlanarReflectionEnabled;
 	}
 }

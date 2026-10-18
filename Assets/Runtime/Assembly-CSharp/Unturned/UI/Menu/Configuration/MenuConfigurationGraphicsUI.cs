@@ -49,9 +49,7 @@ namespace SDG.Unturned
 		private static SleekButtonState lightingButton;
 		private static SleekButtonState ambientOcclusionButton;
 		private static SleekButtonState reflectionButton;
-		private static SleekButtonState planarReflectionButton;
 		private static SleekButtonState waterButton;
-		private static SleekBoxIcon waterPerf;
 		private static SleekButtonState scopeButton;
 		private static SleekBoxIcon scopePerf;
 		private static ISleekToggle scopeDarkPeripheralToggle;
@@ -259,12 +257,6 @@ namespace SDG.Unturned
 			GraphicsSettings.apply("changed reflection quality");
 		}
 
-		private static void onSwappedPlanarReflectionState(SleekButtonState button, int index)
-		{
-			GraphicsSettings.planarReflectionQuality = (EGraphicQuality) (index + 1);
-			GraphicsSettings.apply("changed planar reflection quality");
-			updatePerfWarnings();
-		}
 
 		private static void onSwappedWaterState(SleekButtonState button, int index)
 		{
@@ -367,7 +359,6 @@ namespace SDG.Unturned
 			sunShaftsButton.state = (int) GraphicsSettings.sunShaftsQuality;
 			lightingButton.state = (int) GraphicsSettings.lightingQuality;
 			reflectionButton.state = (int) GraphicsSettings.reflectionQuality;
-			planarReflectionButton.state = (int) GraphicsSettings.planarReflectionQuality - 1;
 			waterButton.state = ((int) GraphicsSettings.waterQuality) - 1;
 			scopeButton.state = (int) GraphicsSettings.scopeQuality;
 			scopeDarkPeripheralToggle.Value = GraphicsSettings.WantsDarkScopePeripheral; 
@@ -386,13 +377,7 @@ namespace SDG.Unturned
 			grassDisplacementToggle.IsInteractable = GraphicsSettings.foliageQuality != EGraphicQuality.OFF;
 			foliageFocusToggle.IsInteractable = GraphicsSettings.foliageQuality != EGraphicQuality.OFF;
 
-			// Planar reflections enabled on Ultra.
-			waterPerf.IsVisible = GraphicsSettings.waterQuality == EGraphicQuality.ULTRA;
-			planarReflectionButton.isInteractable = GraphicsSettings.waterQuality == EGraphicQuality.ULTRA;
-
 			scopePerf.IsVisible = GraphicsSettings.scopeQuality != EGraphicQuality.OFF;
-
-			// Not supported by forward renderer.
 			reflectionButton.isInteractable = GraphicsSettings.renderMode == ERenderMode.DEFERRED;
 			blastToggle.IsInteractable = GraphicsSettings.renderMode == ERenderMode.DEFERRED;
 
@@ -786,30 +771,6 @@ namespace SDG.Unturned
 			waterButton.tooltip = localization.format("Water_Button_Tooltip");
 			waterButton.onSwappedState = onSwappedWaterState;
 			graphicsBox.AddChild(waterButton);
-
-			waterPerf = new SleekBoxIcon(icons.load<Texture2D>("Perf"));
-			waterPerf.PositionOffset_X = 175;
-			waterPerf.PositionOffset_Y = verticalOffset;
-			waterPerf.SizeOffset_X = 30;
-			waterPerf.SizeOffset_Y = 30;
-			waterPerf.iconColor = ESleekTint.FOREGROUND;
-			waterPerf.tooltip = RichTextUtil.wrapWithColor(localization.format("Perf_Water_Reflections"), new Color(1, 0.5f, 0));
-			graphicsBox.AddChild(waterPerf);
-			verticalOffset += 40;
-
-			planarReflectionButton = new SleekButtonState(new GUIContent(localization.format("Low")), new GUIContent(localization.format("Medium")), new GUIContent(localization.format("High")), new GUIContent(localization.format("Ultra")));
-			planarReflectionButton.PositionOffset_X = 205;
-			planarReflectionButton.PositionOffset_Y = verticalOffset;
-			planarReflectionButton.SizeOffset_X = 200;
-			planarReflectionButton.SizeOffset_Y = 30;
-			planarReflectionButton.AddLabel(localization.format("Planar_Reflection_Button_Label"), ESleekSide.RIGHT);
-			planarReflectionButton.tooltip = RichTextUtil.wrapWithColor(localization.format("Planar_Reflection_Button_Tooltip"), tooltipHeaderColor)
-				+ RichTextUtil.wrapWithColor("\n" + localization.format("Planar_Reflection_Low", localization.format("Low"))
-				+ "\n" + localization.format("Planar_Reflection_Medium", localization.format("Medium"))
-				+ "\n" + localization.format("Planar_Reflection_High", localization.format("High"))
-				+ "\n" + localization.format("Planar_Reflection_Ultra", localization.format("Ultra")), tooltipBodyColor);
-			planarReflectionButton.onSwappedState = onSwappedPlanarReflectionState;
-			graphicsBox.AddChild(planarReflectionButton);
 			verticalOffset += 40;
 
 			scopeButton = new SleekButtonState(new GUIContent(localization.format("Off")), new GUIContent(localization.format("Low")), new GUIContent(localization.format("Medium")), new GUIContent(localization.format("High")), new GUIContent(localization.format("Ultra")));

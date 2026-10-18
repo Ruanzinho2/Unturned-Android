@@ -155,6 +155,7 @@ namespace SDG.Unturned
 			syncChromaticAberration();
 			syncFilmGrain();
 			syncScreenSpaceReflections();
+			syncSunShafts();
 		}
 
 		/// <summary>
@@ -169,13 +170,32 @@ namespace SDG.Unturned
 
 		private void syncAmbientOcclusion()
 		{
+#if UNITY_ANDROID
+			baseProfile.ambientOcclusion.active = false;
+			viewmodelProfile.ambientOcclusion.active = false;
+			scopeProfile.ambientOcclusion.active = false;
+			if (baseProfile.fastSSAO != null)
+			{
+				baseProfile.fastSSAO.active = GraphicsSettings.isAmbientOcclusionEnabled;
+			}
+#else
 			baseProfile.ambientOcclusion.active = GraphicsSettings.isAmbientOcclusionEnabled;
 			viewmodelProfile.ambientOcclusion.active = GraphicsSettings.isAmbientOcclusionEnabled;
 			scopeProfile.ambientOcclusion.active = GraphicsSettings.isAmbientOcclusionEnabled;
+#endif
 		}
 
 		private void syncBloom()
 		{
+#if UNITY_ANDROID
+			baseProfile.bloom.active = false;
+			viewmodelProfile.bloom.active = false;
+			scopeProfile.bloom.active = false;
+			if (baseProfile.mobileBloom != null)
+			{
+				baseProfile.mobileBloom.active = GraphicsSettings.bloom;
+			}
+#else
 			// Bloom effects apply to all pixels even with forward rendering, so only active one at a time.
 			if (hasActiveOverlay)
 			{
@@ -188,6 +208,42 @@ namespace SDG.Unturned
 				viewmodelProfile.bloom.active = false;
 			}
 			scopeProfile.bloom.active = false;
+#endif
+		}
+
+		public void syncSunShafts()
+		{
+			if (baseProfile == null || baseProfile.sunShafts == null)
+				return;
+
+			bool active = GraphicsSettings.sunShaftsQuality != EGraphicQuality.OFF;
+			baseProfile.sunShafts.active = active;
+
+			if (active)
+			{
+				switch (GraphicsSettings.sunShaftsQuality)
+				{
+					case EGraphicQuality.LOW:
+						baseProfile.sunShafts.blurIterations.Override(1);
+						baseProfile.sunShafts.blurRadius.Override(0.015f);
+						break;
+					case EGraphicQuality.MEDIUM:
+						baseProfile.sunShafts.blurIterations.Override(2);
+						baseProfile.sunShafts.blurRadius.Override(0.020f);
+						break;
+					case EGraphicQuality.HIGH:
+						baseProfile.sunShafts.blurIterations.Override(3);
+						baseProfile.sunShafts.blurRadius.Override(0.025f);
+						break;
+					case EGraphicQuality.ULTRA:
+						baseProfile.sunShafts.blurIterations.Override(4);
+						baseProfile.sunShafts.blurRadius.Override(0.030f);
+						break;
+					default:
+						baseProfile.sunShafts.active = false;
+						break;
+				}
+			}
 		}
 
 		private void syncChromaticAberration()
@@ -360,6 +416,9 @@ namespace SDG.Unturned
 			public Vignette vignette;
 			public DepthOfField dof;
 			public SrScope singleRenderScope;
+			public MobileBloom mobileBloom;
+			public FastSSAO fastSSAO;
+			public MobileSunShafts sunShafts;
 
 			public PostProcessProfileWrapper(PostProcessProfile profile, EPostProcessLayer layer)
 			{
@@ -397,6 +456,15 @@ namespace SDG.Unturned
 					dof = profile.AddSettings<DepthOfField>();
 					dof.active = false;
 					dof.focusDistance.Override(1.0f);
+
+					mobileBloom = profile.AddSettings<MobileBloom>();
+					mobileBloom.active = false;
+
+					fastSSAO = profile.AddSettings<FastSSAO>();
+					fastSSAO.active = false;
+
+					sunShafts = profile.AddSettings<MobileSunShafts>();
+					sunShafts.active = false;
 				}
 
 				if (layer != EPostProcessLayer.Viewmodel)
