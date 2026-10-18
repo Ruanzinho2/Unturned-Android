@@ -33,4 +33,4 @@ Material:
     - _Metallic: 0.0
     - _Mode: 1
     m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 1.0000, g: 1.0000, b: 1.0000, a: 1.0000}

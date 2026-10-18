@@ -29,4 +29,4 @@ Material:
     - _Glossiness: 0.2
     - _Metallic: 0.0
     m_Colors:
-    - _Color: {r: 1, g: 1, b: 1, a: 1}
+    - _Color: {r: 0.2794, g: 0.2252, b: 0.1438, a: 1.0000}
