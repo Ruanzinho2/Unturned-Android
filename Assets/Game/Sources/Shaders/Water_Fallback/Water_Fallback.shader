@@ -61,7 +61,6 @@ Shader "Custom/Water_Fallback"
             fixed4 _BaseColor;
             fixed4 _Color;
             fixed4 _SpecularColor;
-            fixed4 _SpecColor;
             fixed4 _ReflectionColor;
             half _Shininess;
             half _WaveSpeed;
