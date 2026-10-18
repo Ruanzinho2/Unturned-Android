@@ -26,6 +26,11 @@ namespace SDG.Unturned
 
 	public sealed class FastSSAORenderer : PostProcessEffectRenderer<FastSSAO>
 	{
+		public override DepthTextureMode GetCameraFlags()
+		{
+			return DepthTextureMode.Depth;
+		}
+
 		private Shader shader;
 		private int aoTexId;
 		private int intensityId;

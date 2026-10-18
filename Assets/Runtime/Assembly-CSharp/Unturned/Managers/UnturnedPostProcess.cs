@@ -51,6 +51,9 @@ namespace SDG.Unturned
 			// Deferred fog excludes skybox because Unturned treats "atmosphere" fog separately.
 			basePostProcessLayer.fog.enabled = true;
 			basePostProcessLayer.fog.excludeSkybox = true;
+#if UNITY_ANDROID
+			baseCamera.depthTextureMode |= DepthTextureMode.Depth;
+#endif
 		}
 
 		public void setOverlayCamera(Camera overlayCamera)
@@ -178,6 +181,10 @@ namespace SDG.Unturned
 			if (baseProfile.fastSSAO != null)
 			{
 				baseProfile.fastSSAO.active = GraphicsSettings.isAmbientOcclusionEnabled;
+			}
+			if (MainCamera.instance != null)
+			{
+				MainCamera.instance.depthTextureMode |= DepthTextureMode.Depth;
 			}
 #else
 			baseProfile.ambientOcclusion.active = GraphicsSettings.isAmbientOcclusionEnabled;

@@ -985,6 +985,9 @@ namespace SDG.Unturned
 				MainCamera.instance.farClipPlane = farClipPlane;
 				MainCamera.instance.layerCullDistances = layerCullDistances;
 				MainCamera.instance.layerCullSpherical = true;
+#if UNITY_ANDROID
+				MainCamera.instance.depthTextureMode |= DepthTextureMode.Depth;
+#endif
 
 				if (Player.LocalPlayer != null)
 				{

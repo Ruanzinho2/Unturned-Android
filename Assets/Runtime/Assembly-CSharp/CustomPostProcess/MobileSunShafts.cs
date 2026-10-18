@@ -29,6 +29,11 @@ namespace SDG.Unturned
 
 	public sealed class MobileSunShaftsRenderer : PostProcessEffectRenderer<MobileSunShafts>
 	{
+		public override DepthTextureMode GetCameraFlags()
+		{
+			return DepthTextureMode.Depth;
+		}
+
 		private Shader shader;
 		private int colorBufferId;
 		private int sunPositionId;
