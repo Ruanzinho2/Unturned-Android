@@ -578,6 +578,40 @@ namespace SDG.Framework.Landscapes
 				return;
 			}
 
+#if UNITY_ANDROID
+			if (GraphicsSettings.terrainQuality >= EGraphicQuality.HIGH && GraphicsSettings.blend)
+			{
+				terrain.materialTemplate = Resources.Load<Material>("Materials/Landscapes/Landscape_Forward");
+			}
+			else
+			{
+				terrain.materialTemplate = Resources.Load<Material>("Materials/Landscapes/Landscape_Classic");
+			}
+
+			switch (GraphicsSettings.foliageQuality)
+			{
+				case EGraphicQuality.OFF:
+					terrain.detailObjectDistance = 0f;
+					terrain.detailObjectDensity = 0f;
+					break;
+				case EGraphicQuality.LOW:
+					terrain.detailObjectDistance = 45f;
+					terrain.detailObjectDensity = 0.25f;
+					break;
+				case EGraphicQuality.MEDIUM:
+					terrain.detailObjectDistance = 75f;
+					terrain.detailObjectDensity = 0.5f;
+					break;
+				case EGraphicQuality.HIGH:
+					terrain.detailObjectDistance = 110f;
+					terrain.detailObjectDensity = 0.75f;
+					break;
+				case EGraphicQuality.ULTRA:
+					terrain.detailObjectDistance = 150f;
+					terrain.detailObjectDensity = 1.0f;
+					break;
+			}
+#else
 			if (GraphicsSettings.blend)
 			{
 				switch (GraphicsSettings.renderMode)
@@ -598,6 +632,7 @@ namespace SDG.Framework.Landscapes
 			{
 				terrain.materialTemplate = Resources.Load<Material>("Materials/Landscapes/Landscape_Classic");
 			}
+#endif
 
 			terrain.basemapDistance = GraphicsSettings.terrainBasemapDistance;
 

@@ -156,6 +156,7 @@ namespace SDG.Unturned
 			syncFilmGrain();
 			syncScreenSpaceReflections();
 			syncSunShafts();
+			syncColorGrading();
 		}
 
 		/// <summary>
@@ -244,6 +245,14 @@ namespace SDG.Unturned
 						break;
 				}
 			}
+		}
+
+		public void syncColorGrading()
+		{
+			if (baseProfile == null || baseProfile.mobileColorGrading == null)
+				return;
+
+			baseProfile.mobileColorGrading.active = GraphicsSettings.isAcesFilmicEnabled;
 		}
 
 		private void syncChromaticAberration()
@@ -419,6 +428,7 @@ namespace SDG.Unturned
 			public MobileBloom mobileBloom;
 			public FastSSAO fastSSAO;
 			public MobileSunShafts sunShafts;
+			public MobileColorGrading mobileColorGrading;
 
 			public PostProcessProfileWrapper(PostProcessProfile profile, EPostProcessLayer layer)
 			{
@@ -465,6 +475,9 @@ namespace SDG.Unturned
 
 					sunShafts = profile.AddSettings<MobileSunShafts>();
 					sunShafts.active = false;
+
+					mobileColorGrading = profile.AddSettings<MobileColorGrading>();
+					mobileColorGrading.active = false;
 				}
 
 				if (layer != EPostProcessLayer.Viewmodel)

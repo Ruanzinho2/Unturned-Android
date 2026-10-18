@@ -18,6 +18,7 @@ namespace SDG.Unturned
 		public bool UseUnfocusedTargetFrameRate;
 		public int UnfocusedTargetFrameRate;
 		public bool IsAmbientOcclusionEnabled;
+		public bool IsAcesFilmicEnabled;
 		public bool IsBloomEnabled { get; set; }
 		public bool IsChromaticAberrationEnabled { get; set; }
 		public bool IsFilmGrainEnabled { get; set; }
@@ -78,6 +79,7 @@ namespace SDG.Unturned
 			UnfocusedTargetFrameRate = 1000;
 
 			IsAmbientOcclusionEnabled = false;
+			this.IsAcesFilmicEnabled = true;
 			this.IsBloomEnabled = false;
 			this.IsChromaticAberrationEnabled = false;
 			this.IsFilmGrainEnabled = false;

@@ -19,6 +19,7 @@ namespace SDG.Unturned
 
 		private static ISleekToggle ambientOcclusionToggle;
 		private static ISleekToggle bloomToggle;
+		private static ISleekToggle acesToggle;
 		private static ISleekToggle chromaticAberrationToggle;
 		private static ISleekToggle filmGrainToggle;
 		private static ISleekToggle blendToggle;
@@ -91,6 +92,12 @@ namespace SDG.Unturned
 		{
 			GraphicsSettings.bloom = state;
 			GraphicsSettings.apply("changed bloom");
+		}
+
+		private static void onToggledAcesToggle(ISleekToggle toggle, bool state)
+		{
+			GraphicsSettings.isAcesFilmicEnabled = state;
+			GraphicsSettings.apply("changed aces filmic");
 		}
 
 		private static void onToggledChromaticAberrationToggle(ISleekToggle toggle, bool state)
@@ -327,6 +334,10 @@ namespace SDG.Unturned
 		{
 			ambientOcclusionToggle.Value = GraphicsSettings.isAmbientOcclusionEnabled;
 			bloomToggle.Value = GraphicsSettings.bloom;
+			if (acesToggle != null)
+			{
+				acesToggle.Value = GraphicsSettings.isAcesFilmicEnabled;
+			}
 			chromaticAberrationToggle.Value = GraphicsSettings.chromaticAberration;
 			filmGrainToggle.Value = GraphicsSettings.filmGrain;
 			grassDisplacementToggle.Value = GraphicsSettings.grassDisplacement;
@@ -532,6 +543,18 @@ namespace SDG.Unturned
 			bloomToggle.TooltipText = localization.format("Bloom_Tooltip");
 			bloomToggle.OnValueChanged += onToggledBloomToggle;
 			graphicsBox.AddChild(bloomToggle);
+			verticalOffset += 50;
+
+			acesToggle = Glazier.Get().CreateToggle();
+			acesToggle.PositionOffset_X = 205;
+			acesToggle.PositionOffset_Y = verticalOffset;
+			acesToggle.SizeOffset_X = 40;
+			acesToggle.SizeOffset_Y = 40;
+			acesToggle.AddLabel("ACES Tone Mapping", ESleekSide.RIGHT);
+			acesToggle.TooltipText = "Filmic high-dynamic range tone mapping for mobile displays";
+			acesToggle.Value = GraphicsSettings.isAcesFilmicEnabled;
+			acesToggle.OnValueChanged += onToggledAcesToggle;
+			graphicsBox.AddChild(acesToggle);
 			verticalOffset += 50;
 
 			filmGrainToggle = Glazier.Get().CreateToggle();

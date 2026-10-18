@@ -41,7 +41,7 @@ Shader "Framework/Grass (Uniform Scale)"
 		#pragma multi_compile_instancing
 		#pragma instancing_options assumeuniformscaling
 
-		#pragma surface surf StandardSpecular addshadow vertex:vert alphatest:_Cutoff
+		#pragma surface surf StandardSpecular addshadow vertex:vert alphatest:_Cutoff noforwardadd
 		#pragma target 3.0
 		#include "Assets/Game/Sources/Shaders/CGIncludes/Landscapes/FoliageWind.cginc"
 		#include "UnityCG.cginc"

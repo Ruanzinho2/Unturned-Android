@@ -168,6 +168,12 @@ namespace SDG.Unturned
 			set => graphicsSettingsData.IsAmbientOcclusionEnabled = value;
 		}
 
+		public static bool isAcesFilmicEnabled
+		{
+			get => graphicsSettingsData.IsAcesFilmicEnabled;
+			set => graphicsSettingsData.IsAcesFilmicEnabled = value;
+		}
+
 		public static bool bloom
 		{
 			get => graphicsSettingsData.IsBloomEnabled;
@@ -199,7 +205,34 @@ namespace SDG.Unturned
 		/// <summary>
 		/// Distance to use terrain shaders before fallback to a baked texture.
 		/// </summary>
-		public static float terrainBasemapDistance => WantsCinematicMode ? 8192 : (blend ? 512 : 256);
+		public static float terrainBasemapDistance
+		{
+			get
+			{
+				if (WantsCinematicMode)
+				{
+					return 8192;
+				}
+
+#if UNITY_ANDROID
+				switch (terrainQuality)
+				{
+					case EGraphicQuality.LOW:
+						return 128f;
+					case EGraphicQuality.MEDIUM:
+						return 256f;
+					case EGraphicQuality.HIGH:
+						return 384f;
+					case EGraphicQuality.ULTRA:
+						return 512f;
+					default:
+						return 256f;
+				}
+#else
+				return blend ? 512 : 256;
+#endif
+			}
+		}
 
 		/// <summary>
 		/// Higher error reduces vertex density as distance increases.
@@ -707,6 +740,64 @@ namespace SDG.Unturned
 				applyResolution();
 			}
 
+			QualitySettings.SetQualityLevel(((byte) lightingQuality) + 1, true);
+
+#if UNITY_ANDROID
+			switch (lightingQuality)
+			{
+				case EGraphicQuality.OFF:
+					QualitySettings.shadows = ShadowQuality.Disable;
+					QualitySettings.pixelLightCount = 0;
+					QualitySettings.shadowDistance = 0f;
+					QualitySettings.shadowCascades = 1;
+					break;
+
+				case EGraphicQuality.LOW:
+					QualitySettings.shadows = ShadowQuality.HardOnly;
+					QualitySettings.pixelLightCount = 1;
+					QualitySettings.shadowResolution = ShadowResolution.Low;
+					QualitySettings.shadowDistance = 35f;
+					QualitySettings.shadowCascades = 1;
+					break;
+
+				case EGraphicQuality.MEDIUM:
+					QualitySettings.shadows = ShadowQuality.All;
+					QualitySettings.pixelLightCount = 2;
+					QualitySettings.shadowResolution = ShadowResolution.Medium;
+					QualitySettings.shadowDistance = 55f;
+					QualitySettings.shadowCascades = 2;
+					QualitySettings.shadowCascade2Split = 0.33f;
+					break;
+
+				case EGraphicQuality.HIGH:
+					QualitySettings.shadows = ShadowQuality.All;
+					QualitySettings.pixelLightCount = 3;
+					QualitySettings.shadowResolution = ShadowResolution.High;
+					QualitySettings.shadowDistance = 80f;
+					QualitySettings.shadowCascades = 2;
+					QualitySettings.shadowCascade2Split = 0.25f;
+					break;
+
+				case EGraphicQuality.ULTRA:
+					QualitySettings.shadows = ShadowQuality.All;
+					QualitySettings.pixelLightCount = 4;
+					QualitySettings.shadowResolution = ShadowResolution.VeryHigh;
+					QualitySettings.shadowDistance = 110f;
+					QualitySettings.shadowCascades = 2;
+					QualitySettings.shadowCascade2Split = 0.20f;
+					break;
+			}
+
+			if (LevelLighting.sun != null)
+			{
+				Light sunLight = LevelLighting.sun.GetComponent<Light>();
+				if (sunLight != null)
+				{
+					sunLight.shadowBias = 0.05f;
+					sunLight.shadowNormalBias = (lightingQuality >= EGraphicQuality.HIGH) ? 0.3f : 0.5f;
+				}
+			}
+#else
 			if (LevelLighting.sun != null)
 			{
 				if (lightingQuality == EGraphicQuality.ULTRA || lightingQuality == EGraphicQuality.HIGH)
@@ -718,8 +809,7 @@ namespace SDG.Unturned
 					LevelLighting.sun.GetComponent<Light>().shadowNormalBias = 0.5f;
 				}
 			}
-
-			QualitySettings.SetQualityLevel(((byte) lightingQuality) + 1, true);
+#endif
 
 			ApplyVSyncAndTargetFrameRate();
 

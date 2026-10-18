@@ -25,5 +25,20 @@ namespace SDG.Unturned
 				UnturnedPostProcess.instance.syncSunShafts();
 			}
 		}
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+		private static void InitPlayerGrassDisplacement()
+		{
+			Player.onPlayerCreated += (player) =>
+			{
+				if (player != null && player.channel != null && player.channel.IsLocalPlayer)
+				{
+					if (player.GetComponent<GrassDisplacement>() == null)
+					{
+						player.gameObject.AddComponent<GrassDisplacement>();
+					}
+				}
+			};
+		}
 	}
 }

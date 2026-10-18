@@ -23,7 +23,7 @@ Shader "Custom/Foliage"
 		CGPROGRAM
 			 
 		#pragma multi_compile ___ NICE_FOLIAGE_ON
-		#pragma surface surf StandardSpecular addshadow vertex:vert
+		#pragma surface surf StandardSpecular addshadow vertex:vert noforwardadd
 		#pragma target 3.0
 		#include "TerrainEngine.cginc"
 		#include "UnityCG.cginc"

@@ -24,7 +24,7 @@ Shader "Custom/FoliageSnow"
 		CGPROGRAM
 			 
 		#pragma multi_compile ___ NICE_FOLIAGE_ON
-		#pragma surface surf StandardSpecular addshadow vertex:vert alphatest:_Cutoff
+		#pragma surface surf StandardSpecular addshadow vertex:vert alphatest:_Cutoff noforwardadd
 		#pragma target 3.0
 		#include "TerrainEngine.cginc"
 		#include "UnityCG.cginc"
