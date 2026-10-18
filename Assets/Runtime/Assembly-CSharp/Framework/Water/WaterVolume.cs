@@ -179,11 +179,19 @@ namespace SDG.Framework.Water
 			float scale_y = 1f / size_y;
 
 			GameObject waterTilePrefab = Resources.Load<GameObject>("Level/Water_Fallback");
+			if (waterTilePrefab == null)
+			{
+				return;
+			}
+
 			InstantiateParameters instantiateParameters = new InstantiateParameters()
 			{
 				parent = waterPlane.transform,
 				worldSpace = false,
 			};
+
+			float localScaleY = (transform.localScale.y > 0.001f) ? (1.0f / transform.localScale.y) : 1.0f;
+
 			for (int tile_x = 0; tile_x < size_x; tile_x++)
 			{
 				for (int tile_y = 0; tile_y < size_y; tile_y++)
@@ -196,14 +204,18 @@ namespace SDG.Framework.Water
 					waterTile.name = "Tile_" + tile_x + "_" + tile_y;
 					waterTile.transform.localPosition = position;
 					waterTile.transform.localRotation = Quaternion.identity;
-					waterTile.transform.localScale = new Vector3(0.1f * scale_x, 1.0f, 0.1f * scale_y);
-					if (sharedMaterial == null)
+					waterTile.transform.localScale = new Vector3(0.1f * scale_x, localScaleY, 0.1f * scale_y);
+					Renderer tileRenderer = waterTile.GetComponent<Renderer>();
+					if (tileRenderer != null)
 					{
-						sharedMaterial = waterTile.GetComponent<Renderer>().material;
-					}
-					else
-					{
-						waterTile.GetComponent<Renderer>().material = sharedMaterial;
+						if (sharedMaterial == null)
+						{
+							sharedMaterial = tileRenderer.sharedMaterial;
+						}
+						else
+						{
+							tileRenderer.sharedMaterial = sharedMaterial;
+						}
 					}
 				}
 			}

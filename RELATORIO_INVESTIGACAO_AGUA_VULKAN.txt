@@ -1,0 +1,138 @@
+================================================================================
+RELATORIO TECNICO: INVESTIGACAO DO SISTEMA DE AGUA NO VULKAN (ADRENO 642L)
+PORT UNTURNED ANDROID (UNITY 2022.3.62f3)
+================================================================================
+
+1. OBJETIVO DA INVESTIGACAO
+--------------------------------------------------------------------------------
+Investigar a viabilidade de remover as dependencias incompativeis ou substituir
+os recursos graficos problematicos para fazer o sistema de agua do Unturned funcionar
+sem bugs e sem artefatos visuais no driver Vulkan do Qualcomm Adreno 642L 
+(Snapdragon 778G / 778G+).
+
+
+2. VIABILIDADE DE REMOCAO E SUBSTITUICAO
+--------------------------------------------------------------------------------
+SIM, E 100% VIAVEL.
+
+A dependencia dos recursos de agua de PC (camera reflexiva secundaria, amostragem 
+de profundidade via tela _CameraDepthTexture, GrabPass de refracao e o post-process 
+SkyFog) NAO e necessaria para o funcionamento do jogo nem para a agua ser 
+renderizada corretamente no Android.
+
+No Unturned, toda a mecanica de fisica da agua (flutuacao, nado, consumo de oxigenio,
+sons de passos, deteccao de veiculos e balistica subaquatica) e gerenciada pelo 
+codigo C# (WaterVolume.cs) atraves de triggers (beginCollision / endCollision). 
+A superficie visual e independente da fisica e pode ser substituida por uma 
+solucao mobile compativel sem qualquer prejuizo a jogabilidade.
+
+
+3. CAUSA RAIZ TECNICA DO PROBLEMA
+--------------------------------------------------------------------------------
+O bug visual observado anteriormente (artefatos cinzas 2D cobrindo a metade inferior
+da tela a partir do horizonte, planos que acompanham a visao do jogador e reflexos 
+distorcidos) decorre de quatro fatores tecnicos combinados:
+
+A) Incompatibilidade do PlanarReflection com a Arquitetura TBDR da Adreno no Vulkan:
+   - O sistema de agua original de PC (Water4) utiliza uma camera secundaria em tempo 
+     real (PlanarReflection.cs). A cada frame, ele calcula uma matriz de projecao 
+     obliqua (cam.CalculateObliqueMatrix) e executa reflectionCamera.Render().
+   - A GPU Adreno 642L opera por blocos de renderizacao (Tile-Based Deferred 
+     Rendering - TBDR). Interromper o pase principal de desenho no meio do frame 
+     para renderizar uma textura secundaria fora da tela obriga o driver a descarregar 
+     (flush) a memoria rapida interna (GMEM) para a memoria RAM do celular.
+   - No Vulkan antigo da Adreno, a funcao CalculateObliqueMatrix produz matrizes 
+     degeneradas ou valores NaN devido as diferencas de convencao de clip-space 
+     (Vulkan usa profundidade [0, 1] invertida, enquanto o codigo de PC assumia 
+     o padrao [-1, 1] do OpenGL desktop), corrompendo o framebuffer.
+
+B) Mascaramento em Tela Cheia do Pos-Processamento SkyFog:
+   - O efeito SkyFog (SkyFog.cs / SkyFog.shader) roda no evento BeforeTransparent 
+     desenhando um triangulo em tela cheia (BlitFullscreenTriangle).
+   - O shader tenta reconstruir a direcao de visao (input.viewDir) a partir da 
+     matriz inversa de projecao (_InverseProjectionMatrix).
+   - No Vulkan movel, a inversao sofre com inversoes de eixo UV e Z invertido. 
+     Como o volume de agua do mapa PEI tem dimensoes colossais (4096 x 1024 metros),
+     a condicao IsWithinWater(viewPos) resultava em 'true' para quase todos os 
+     pixels abaixo da linha do horizonte, mesmo com o personagem fora da agua.
+   - Consequencia: O SkyFog pintava diretamente uma mascara retangular solida cinza/azul 
+     por cima de todo o terreno na metade inferior da tela. Ao olhar para o ceu ou 
+     mergulhar, o teste falhava e a tela limpava.
+
+C) Dependencia de _CameraDepthTexture e GrabPass:
+   - Shaders convencionais de PC tentam ler o buffer de profundidade global para 
+     calcular transparencia de margem e refracao.
+   - Em dispositivos moveis com Vulkan, acessar a profundidade no passe transparente 
+     em Forward Rendering frequentemente falha ou retorna 0. Com valor 0, o shader 
+     assume profundidade infinita, esticando a projecao da agua contra a lente da camera.
+
+D) Discrepancia de Malha e Escala do Prefab de Fallback (Water_Fallback.prefab):
+   - O prefab deixado no SDK aberto (Water_Fallback.prefab) continha uma malha Quad 
+     (fileID: 10209).
+   - Um Quad na Unity e uma malha VERTICAL (plano XY, voltado para Z) de 1x1 metro.
+   - O metodo do Unturned (WaterVolume.CreateFallbackWaterPlanes) foi programado 
+     esperando um Plane HORIZONTAL (plano XZ, voltado para Y) de 10x10 metros com escala 0.1x.
+   - Ao usar um Quad sob um transform com escala vertical de 1024 metros, a malha virava 
+     uma parede vertical gigantesca no horizonte, criando os artefatos de planos flutuantes 
+     que pareciam acompanhar o jogador.
+
+E) Por que a versao do desenvolvedor russo funcionava perfeitamente?
+   - O desenvolvedor russo contornou todas essas limitacoes de hardware:
+     1. Removeu completamente o componente PlanarReflection e as sub-cameras no Android.
+     2. Removeu a amostragem de _CameraDepthTexture no shader da agua.
+     3. Utilizou uma malha horizontal padronizada com escala correta.
+     4. Utilizou um shader de agua mobile leve e autonomo (Forward Transparent padrao).
+
+
+4. POSSIVEIS SOLUCOES
+--------------------------------------------------------------------------------
+Opcao 1: Shader de Agua Mobile Dedicado (Sem Depth/GrabPass)
+- Descricao: Shader leve baseado em rolagem de textura de normais (UV scrolling), 
+  calculo especular simples do sol/lua (Blinn-Phong) e transparencia alpha uniforme.
+- Pros: 100% compativel com qualquer driver Vulkan ou OpenGL ES 3. Altissima taxa de 
+  quadros (FPS), baixo consumo termico/bateria, visual limpo e fiel ao estilo low-poly.
+- Contras: Nao possui reflexo dinamico de jogadores/veiculos nem refracao do fundo.
+
+Opcao 2: Replicar Integralmente a Solucao do Port Russo
+- Descricao: Aplicar exatamente os mesmos parametros e estruturas validadas no port 
+  russo (desativar sub-cameras, malha plana horizontal e shader mobile sem subpasses).
+- Pros: Ja foi comprovado no proprio aparelho que funciona sem qualquer bug.
+- Contras: Necessita sincronizar o prefab com o codigo de spawn de telhas.
+
+Opcao 3: Tentar Consertar a Pipeline Water4 de PC no Vulkan Movel
+- Descricao: Forcar Depth Pre-Pass e reescrever a matematica de projecao obliqua.
+- Pros: Teoria de manter os efeitos avancados de PC.
+- Contras: INVIAVEL. Drivers de GPU intermediarios no Android frequentemente travam 
+  ou corrompem a memoria ao lidar com sub-cameras no Vulkan, alem de derrubar o FPS.
+
+
+5. MELHOR ABORDAGEM RECOMENDADA
+--------------------------------------------------------------------------------
+A melhor abordagem e a combinacao da Opcao 1 com a Opcao 2:
+
+1. Desativar Dependencias Problematicas no Android:
+   - Garantir que PlanarReflection e sub-cameras permaneçam inativas no Android.
+   - Manter o bypass do SkyFog no Android (evitando a pintura solida na tela).
+   - Remover requisitos de _CameraDepthTexture e GrabPass do material da agua.
+
+2. Corrigir a Malha no Water_Fallback.prefab:
+   - Substituir a malha vertical (Quad) por uma malha de plano horizontal (plano XZ 
+     voltado para cima, com normais Vector3.up), garantindo que CreateFallbackWaterPlanes 
+     preencha a superficie do mar exatamente na altitude do oceano, sem paredes ou vãos.
+
+3. Shader de Agua Otimizado (Custom/Water_Fallback):
+   - Configurar como Queue = Transparent (3000), ZWrite Off, Blend SrcAlpha OneMinusSrcAlpha, 
+     Cull Back.
+   - Adicionar animacao de ondas atraves de deslocamento de coordenadas UV no tempo (_Time.y).
+   - Incluir iluminacao especular direta para gerar brilho natural da luz do sol e da lua.
+
+
+6. CONCLUSAO
+--------------------------------------------------------------------------------
+O problema da agua no celular nao e uma limitacao de poder de processamento do hardware,
+mas sim o uso de recursos legados de desktop incompativeis com o pipeline Vulkan TBDR 
+de dispositivos moveis. 
+
+Com a substituicao da malha vertical por uma horizontal e o uso de um shader mobile 
+autonomo, a agua renderizara de forma estavel, bonita e com excelente desempenho.
+================================================================================
