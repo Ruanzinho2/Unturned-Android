@@ -15,7 +15,14 @@ namespace SDG.Unturned
 	[PostProcess(typeof(SkyFogRenderer), PostProcessEvent.BeforeTransparent, "Custom/SkyFog")]
 	public sealed class SkyFog : PostProcessEffectSettings
 	{
-
+		public override bool IsEnabledAndSupported(PostProcessRenderContext context)
+		{
+#if UNITY_ANDROID
+			return false;
+#else
+			return enabled.value;
+#endif
+		}
 	}
 
 	public sealed class SkyFogRenderer : PostProcessEffectRenderer<SkyFog>
@@ -40,6 +47,10 @@ namespace SDG.Unturned
 
 		public override void Render(PostProcessRenderContext context)
 		{
+#if UNITY_ANDROID
+			context.command.Blit(context.source, context.destination);
+			return;
+#else
 			PropertySheet sheet = context.propertySheets.Get(shader);
 
 			// _FogColor uniform is declared in Fog.hlsl
@@ -66,6 +77,7 @@ namespace SDG.Unturned
 			sheet.properties.SetMatrixArray(waterMatricesId, waterMatrices);
 
 			context.command.BlitFullscreenTriangle(context.source, context.destination, sheet, 0);
+#endif
 		}
 
 		private void FindRelevantWaterVolumes(Vector3 viewPosition)

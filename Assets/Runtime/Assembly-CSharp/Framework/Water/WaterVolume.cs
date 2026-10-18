@@ -269,6 +269,11 @@ namespace SDG.Framework.Water
 				}
 			}
 
+			if (sharedMaterial != null)
+			{
+				sharedMaterial.renderQueue = 2990;
+			}
+
 			for (int tile_x = 0; tile_x < size_x; tile_x++)
 			{
 				for (int tile_y = 0; tile_y < size_y; tile_y++)

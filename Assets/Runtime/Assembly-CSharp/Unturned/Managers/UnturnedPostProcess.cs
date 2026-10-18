@@ -401,7 +401,9 @@ namespace SDG.Unturned
 
 				if (layer != EPostProcessLayer.Viewmodel)
 				{
+#if !UNITY_ANDROID
 					profile.AddSettings<SkyFog>();
+#endif
 				}
 
 				if (layer == EPostProcessLayer.Base)

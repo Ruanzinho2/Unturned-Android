@@ -67,6 +67,9 @@ Shader "Hidden/Custom/SkyFog"
 		float4 Frag(Varyings input) : SV_Target
 		{
 			float4 color = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, input.texcoord);
+#if defined(SHADER_API_MOBILE) || defined(SHADER_API_VULKAN) || defined(SHADER_API_GLES3)
+			return color;
+#else
 			float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, input.texcoord);
 			float depth = LinearEyeDepth(rawDepth);
 			
@@ -103,12 +106,6 @@ Shader "Hidden/Custom/SkyFog"
 
 			float3 outputColor = lerp(color.rgb, skyColor, fogAlpha * notSkybox);
 
-#if defined(SHADER_API_MOBILE) || defined(SHADER_API_VULKAN) || defined(SHADER_API_GLES3)
-			if (_IsCameraUnderwater > 0.5)
-			{
-				outputColor = lerp(outputColor, _WaterColor, 0.65);
-			}
-#else
 			// _ProjectionParams.y is near clip plane distance. 
 			float3 viewPos = _WorldSpaceCameraPos + input.viewDir * _ProjectionParams.y;
 			if (abs(_IsCameraUnderwater - IsWithinWater(viewPos)) > 0.5)
@@ -117,9 +114,9 @@ Shader "Hidden/Custom/SkyFog"
 				// and camera is underwater.
 				outputColor = _WaterColor;
 			}
-#endif
 
 			return float4(outputColor, color.a);
+#endif
 		}
 
 	ENDHLSL

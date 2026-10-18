@@ -250,9 +250,9 @@ Shader "Custom/Water_Fallback"
 
                 // Safe depth-tested shoreline edge foam
                 float shoreFoam = 0.0;
-                #if defined(SOFTPARTICLES_ON) || defined(_CAMERA_DEPTH_ON) || !defined(SHADER_API_GLES)
+                #if (defined(SOFTPARTICLES_ON) || defined(_CAMERA_DEPTH_ON)) && !defined(SHADER_API_MOBILE) && !defined(SHADER_API_VULKAN) && !defined(SHADER_API_GLES3)
                 float sceneZ = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, UNITY_PROJ_COORD(i.screenPos)));
-                float partZ = i.screenPos.z;
+                float partZ = i.screenPos.w;
                 float depthDiff = sceneZ - partZ;
                 if (depthDiff > 0.0 && depthDiff < (_EdgeFoamThreshold * 20.0))
                 {
