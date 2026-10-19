@@ -374,7 +374,6 @@ namespace SDG.Unturned
 
 				// Foliage & Grass Shaders
 				"Framework/Grass",
-				"Framework/Grass (Uniform Scale)",
 				"Custom/Foliage",
 				"Custom/FoliageSnow",
 				"Custom/Flag",
