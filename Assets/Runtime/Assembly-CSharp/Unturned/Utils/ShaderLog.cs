@@ -375,11 +375,11 @@ namespace SDG.Unturned
 				"Landscapes/HeightTransition/Forward/AddPass",
 				"Landscapes/LinearTransition/FirstPass",
 				"Landscapes/LinearTransition/AddPass",
-				"StandardLandscape",
+				"Standard/Landscape",
 
 				// Foliage & Grass Shaders
 				"Framework/Grass",
-				"Framework/Grass_AssumeUniformScale",
+				"Framework/Grass (Uniform Scale)",
 				"Custom/Foliage",
 				"Custom/FoliageSnow",
 				"Custom/Flag",
@@ -387,7 +387,7 @@ namespace SDG.Unturned
 				// Standard Core Shaders
 				"Standard",
 				"Standard (Specular setup)",
-				"StandardSnow"
+				"Standard/Snow"
 			};
 
 			foreach (string name in coreShaders)
