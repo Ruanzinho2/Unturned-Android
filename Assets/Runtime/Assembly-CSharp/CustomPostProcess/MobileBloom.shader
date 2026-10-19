@@ -23,8 +23,13 @@ Shader "Hidden/Custom/MobileBloom"
             float4 s3 = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.texcoord + off);
             float4 col = (s0 + s1 + s2 + s3) * 0.25;
 
+            // Soft-knee thresholding (smooth transition, visible optical bloom)
             half m = max(col.r, max(col.g, col.b));
-            half factor = max(0.0h, m - _Threshold) / max(m, 0.00001h);
+            half knee = 0.5h;
+            half soft = m - _Threshold + knee;
+            soft = clamp(soft, 0.0h, 2.0h * knee);
+            soft = soft * soft / (4.0h * max(knee, 0.0001h));
+            half factor = max(soft, m - _Threshold) / max(m, 0.00001h);
             return col * factor;
         }
 

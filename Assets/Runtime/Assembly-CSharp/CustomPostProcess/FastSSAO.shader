@@ -37,7 +37,10 @@ Shader "Hidden/Custom/FastSSAO"
             {
                 aspect = 1.0;
             }
-            float2 radiusScaled = (_Radius / max(0.5, eyeDepth * 0.1)) * float2(1.0, aspect);
+
+            // World-space search radius scaled to screen pixels (clamped to prevent giant halos on close objects)
+            float rScreen = clamp(_Radius / max(0.4, eyeDepth * 0.4), 0.001, 0.012);
+            float2 radiusScaled = rScreen * float2(1.0, aspect);
 
             const float2 samples[4] = {
                 float2( 1.0,  0.0),
@@ -46,6 +49,8 @@ Shader "Hidden/Custom/FastSSAO"
                 float2( 0.0, -1.0)
             };
 
+            // Max occlusion range: 0.35m (tight contact shadow, eliminates background halo)
+            const float maxDist = 0.35;
             float occlusion = 0.0;
             for (int k = 0; k < 4; k++)
             {
@@ -53,9 +58,10 @@ Shader "Hidden/Custom/FastSSAO"
                 float sampleRaw = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, sampleUV);
                 float sampleEye = LinearEyeDepth(sampleRaw);
                 float diff = eyeDepth - sampleEye;
-                if (diff > 0.02 && diff < 1.5)
+                // Only occlude if sample is in front of the center point and within contact distance
+                if (diff > 0.01 && diff < maxDist)
                 {
-                    occlusion += (1.0 - diff / 1.5);
+                    occlusion += (1.0 - diff / maxDist);
                 }
             }
 
@@ -68,9 +74,12 @@ Shader "Hidden/Custom/FastSSAO"
             return float4(ao, ao, ao, 1.0);
         }
 
-        // Pass 1: Fast Bilateral/Box Blur
+        // Pass 1: Depth-Aware Bilateral Blur (Prevents shadow bleeding across object silhouettes)
         float4 FragBlur(VaryingsDefault i) : SV_Target
         {
+            float centerRaw = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoordStereo);
+            float centerDepth = LinearEyeDepth(centerRaw);
+
             float2 off = _MainTex_TexelSize.xy * 1.5;
             half center = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.texcoord).r;
             half s0 = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.texcoord - off).r;
@@ -78,7 +87,20 @@ Shader "Hidden/Custom/FastSSAO"
             half s2 = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.texcoord + float2(-off.x, off.y)).r;
             half s3 = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.texcoord + float2(off.x, -off.y)).r;
 
-            half ao = center * 0.40h + (s0 + s1 + s2 + s3) * 0.15h;
+            // Bilateral weights based on depth difference to preserve silhouette edges
+            float d0 = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord - off));
+            float d1 = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord + off));
+            float d2 = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord + float2(-off.x, off.y)));
+            float d3 = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord + float2(off.x, -off.y)));
+
+            // Sharp depth boundary cutoff (0.2m)
+            float w0 = saturate(1.0 - abs(centerDepth - d0) * 5.0);
+            float w1 = saturate(1.0 - abs(centerDepth - d1) * 5.0);
+            float w2 = saturate(1.0 - abs(centerDepth - d2) * 5.0);
+            float w3 = saturate(1.0 - abs(centerDepth - d3) * 5.0);
+
+            float totalWeight = 1.0 + (w0 + w1 + w2 + w3) * 0.5;
+            half ao = (center + (s0 * w0 + s1 * w1 + s2 * w2 + s3 * w3) * 0.5h) / totalWeight;
             ao = clamp(ao, 0.0h, 1.0h);
             return float4(ao, ao, ao, 1.0);
         }

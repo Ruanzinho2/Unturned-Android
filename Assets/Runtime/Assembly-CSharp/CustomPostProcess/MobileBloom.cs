@@ -9,13 +9,13 @@ namespace SDG.Unturned
 	public sealed class MobileBloom : PostProcessEffectSettings
 	{
 		[Range(0f, 2f)]
-		public FloatParameter threshold = new FloatParameter { value = 0.8f };
+		public FloatParameter threshold = new FloatParameter { value = 0.65f };
 
 		[Range(0.1f, 3f)]
-		public FloatParameter blurAmount = new FloatParameter { value = 1.2f };
+		public FloatParameter blurAmount = new FloatParameter { value = 1.5f };
 
 		[Range(0f, 3f)]
-		public FloatParameter intensity = new FloatParameter { value = 1.0f };
+		public FloatParameter intensity = new FloatParameter { value = 1.25f };
 
 		public ColorParameter bloomColor = new ColorParameter { value = Color.white };
 

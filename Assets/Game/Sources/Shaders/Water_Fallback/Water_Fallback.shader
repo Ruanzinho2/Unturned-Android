@@ -230,23 +230,24 @@ Shader "Custom/Water_Fallback"
                 float4 worldPos = mul(unity_ObjectToWorld, v.vertex);
 
                 float3 waveDisp;
-                float3 waveNormal;
-
                 #if defined(_WATER_QUALITY_LOW)
                 // Low quality: completely flat plane, zero trigonometry in vertex shader
                 waveDisp = float3(0.0, 0.0, 0.0);
-                waveNormal = float3(0.0, 1.0, 0.0);
                 #elif defined(_WATER_QUALITY_MEDIUM)
-                // Medium quality: 2 Gerstner waves (half the trigonometry)
-                EvaluateGerstnerWaves2(worldPos.xyz, waveDisp, waveNormal);
+                // Medium quality: Gentle long-wavelength ocean swell (avoids 64m mesh aliasing)
+                float swell = sin(worldPos.x * 0.035 + _Time.y * 0.8) * cos(worldPos.z * 0.028 + _Time.y * 0.6) * (_GerstnerIntensity * 0.25);
+                waveDisp = float3(0.0, swell, 0.0);
                 #else
-                // High / Ultra / Default: 4 Gerstner waves
-                EvaluateGerstnerWaves4(worldPos.xyz, waveDisp, waveNormal);
+                // High / Ultra: Smooth dual-harmonic ocean swell (80m-180m wavelengths)
+                float sw1 = sin(worldPos.x * 0.035 + worldPos.z * 0.020 + _Time.y * 0.85);
+                float sw2 = cos(worldPos.x * 0.022 - worldPos.z * 0.038 + _Time.y * 0.65);
+                float swell = (sw1 + sw2) * (_GerstnerIntensity * 0.22);
+                waveDisp = float3(0.0, swell, 0.0);
                 #endif
 
                 worldPos.xyz += waveDisp;
                 o.worldPos = worldPos.xyz;
-                o.worldNormal = waveNormal;
+                o.worldNormal = float3(0.0, 1.0, 0.0);
                 o.waveDispY = waveDisp.y;
                 o.pos = UnityWorldToClipPos(worldPos);
                 o.screenPos = ComputeScreenPos(o.pos);
@@ -260,6 +261,12 @@ Shader "Custom/Water_Fallback"
 
                 // Light direction (from LevelLighting or sun/moon)
                 float3 lightDir = normalize(_WorldLightDir.xyz);
+                // LevelLighting passes sun.forward (points downward into ground).
+                // For lighting calculations, lightDir must point UPWARDS towards the sky/sun!
+                if (lightDir.y < 0.0)
+                {
+                    lightDir = -lightDir;
+                }
                 if (dot(lightDir, lightDir) < 0.01)
                 {
                     lightDir = normalize(float3(0.35, 0.85, -0.25));
@@ -270,7 +277,7 @@ Shader "Custom/Water_Fallback"
 
                 #if defined(_WATER_QUALITY_LOW)
                 // ==================== LOW QUALITY ====================
-                // Zero noise sampling, zero ripples, direct Blinn-Phong lighting
+                // Zero noise sampling, flat mirror, direct Blinn-Phong lighting
                 float3 normal = (dot(float3(0.0, 1.0, 0.0), viewDir) >= 0.0) ? float3(0.0, 1.0, 0.0) : float3(0.0, -1.0, 0.0);
                 float3 halfDir = normalize(lightDir + viewDir);
                 float NdotH = max(0.0, dot(normal, halfDir));
@@ -287,26 +294,36 @@ Shader "Custom/Water_Fallback"
 
                 #elif defined(_WATER_QUALITY_MEDIUM)
                 // ==================== MEDIUM QUALITY ====================
-                // Dual-octave smooth ripples, light-gated Blinn-Phong, cubemap reflections
+                // Multi-directional 4-wave interference per-pixel, cubemap reflection, anti-aliased specular
+                float2 p = i.worldPos.xz * (_RippleScale * 0.12);
                 float t = _Time.y * _RippleSpeed;
-                float2 uv1 = i.worldPos.xz * (_RippleScale * 0.30) + float2(t * 0.25, t * 0.18);
-                float2 uv2 = i.worldPos.xz * (_RippleScale * 0.45) - float2(t * 0.15, -t * 0.22);
-                float w1 = sin(uv1.x + uv1.y * 1.2);
-                float w2 = cos(uv2.x * 1.1 - uv2.y * 0.9);
-                // Perturb normal in X and Z without swapping Y and Z axes
-                float3 rippleOffset = float3((w1 + w2) * (_RippleStrength * 0.20), 0.0, (w1 - w2) * (_RippleStrength * 0.20));
-                float3 normal = normalize(i.worldNormal + rippleOffset);
+
+                // 4 non-parallel wave trains across 360 degrees (eliminates parallel stripes)
+                float4 dotP = float4(
+                    p.x *  0.866 + p.y *  0.500,
+                   -p.x *  0.500 + p.y *  0.866,
+                   -p.x *  0.819 - p.y *  0.574,
+                    p.x *  0.574 - p.y *  0.819
+                );
+                float4 freq = float4(1.0, 1.35, 1.85, 2.45);
+                float4 speed = float4(1.1, -0.9, 1.4, -1.2) * t;
+                float4 phase = dotP * freq + speed;
+                float4 cosP = cos(phase);
+
+                float4 amp = float4(0.25, 0.18, 0.12, 0.08) * (_RippleStrength * 0.22);
+                float dNx = dot(amp * freq, float4( 0.866 * cosP.x, -0.500 * cosP.y, -0.819 * cosP.z,  0.574 * cosP.w));
+                float dNz = dot(amp * freq, float4( 0.500 * cosP.x,  0.866 * cosP.y, -0.574 * cosP.z, -0.819 * cosP.w));
+
+                float3 normal = normalize(float3(-dNx, 1.0, -dNz));
                 if (dot(normal, viewDir) < 0.0)
                 {
                     normal = -normal;
                 }
 
                 float NdotL = max(0.0, dot(normal, lightDir));
-                float lightMask = saturate(NdotL * 3.0);
-
                 float3 halfDir = normalize(lightDir + viewDir);
                 float NdotH = max(0.0, dot(normal, halfDir));
-                float spec = pow(NdotH, clamp(_Shininess, 16.0, 96.0)) * lightMask;
+                float spec = pow(NdotH, clamp(_Shininess, 16.0, 96.0)) * saturate(NdotL * 2.5);
                 spec = smoothstep(0.0, 1.0, spec);
                 fixed3 specCol = (_SpecularColor.a > 0.01) ? _SpecularColor.rgb : fixed3(1.0, 1.0, 1.0);
                 float3 specular = spec * specCol * (_SpecularColor.a * 0.45);
@@ -328,10 +345,10 @@ Shader "Custom/Water_Fallback"
                     reflCol = lerp(reflCol, reflCol * skyColor, 0.50);
                 }
 
-                float lightIntensity = 0.45 + 0.55 * NdotL;
+                float lightIntensity = 0.50 + 0.50 * NdotL;
                 float3 shallowColor = baseCol.rgb * lightIntensity;
-                float3 waterBody = lerp(deepCol * lightIntensity, shallowColor, 0.75);
-                float3 litWater = lerp(waterBody, reflCol, fresnel * 0.40) + specular;
+                float3 waterBody = lerp(deepCol * lightIntensity, shallowColor, 0.70);
+                float3 litWater = lerp(waterBody, reflCol, fresnel * 0.45) + specular;
 
                 float alphaBase = max(baseCol.a, 0.65);
                 float finalAlpha = saturate(alphaBase + fresnel * 0.20);
@@ -342,28 +359,42 @@ Shader "Custom/Water_Fallback"
 
                 #else
                 // ==================== HIGH & ULTRA QUALITY ====================
-                // Dual-octave ripples, smooth Gerstner crests, cubemap reflection, anti-aliased specular
+                // Multi-directional analytical waves + capillary ripples + cubemap reflection + smooth foam
+                float2 p = i.worldPos.xz * (_RippleScale * 0.12);
                 float t = _Time.y * _RippleSpeed;
-                float2 uv1 = i.worldPos.xz * (_RippleScale * 0.35) + float2(t * 0.30, t * 0.20);
-                float2 uv2 = i.worldPos.xz * (_RippleScale * 0.60) - float2(t * 0.18, -t * 0.25);
 
-                float w1 = sin(uv1.x + uv1.y * 1.2);
-                float w2 = cos(uv2.x * 1.1 - uv2.y * 0.85);
-                // Perturb normal in X and Z without swapping Y and Z axes
-                float3 rippleOffset = float3((w1 + w2) * (_RippleStrength * 0.25), 0.0, (w1 - w2) * (_RippleStrength * 0.25));
-                float3 normal = normalize(i.worldNormal + rippleOffset);
+                // 4 non-parallel wave trains across 360 degrees
+                float4 dotP = float4(
+                    p.x *  0.866 + p.y *  0.500,
+                   -p.x *  0.500 + p.y *  0.866,
+                   -p.x *  0.819 - p.y *  0.574,
+                    p.x *  0.574 - p.y *  0.819
+                );
+                float4 freq = float4(1.0, 1.35, 1.85, 2.45);
+                float4 speed = float4(1.1, -0.9, 1.4, -1.2) * t;
+                float4 phase = dotP * freq + speed;
+                float4 cosP = cos(phase);
+
+                float4 amp = float4(0.30, 0.22, 0.15, 0.10) * (_RippleStrength * 0.24);
+                float dNx = dot(amp * freq, float4( 0.866 * cosP.x, -0.500 * cosP.y, -0.819 * cosP.z,  0.574 * cosP.w));
+                float dNz = dot(amp * freq, float4( 0.500 * cosP.x,  0.866 * cosP.y, -0.574 * cosP.z, -0.819 * cosP.w));
+
+                // Micro capillary chop
+                float2 capUV = i.worldPos.xz * (_RippleScale * 0.50) + float2(t * 0.35, -t * 0.25);
+                float capW = sin(capUV.x * 1.4 + capUV.y * 0.9) * cos(capUV.x * 0.8 - capUV.y * 1.5);
+                float3 fineOffset = float3(capW * (_RippleStrength * 0.05), 0.0, capW * (_RippleStrength * 0.05));
+
+                float3 normal = normalize(float3(-dNx, 1.0, -dNz) + fineOffset);
                 if (dot(normal, viewDir) < 0.0)
                 {
                     normal = -normal;
                 }
 
                 float NdotL = max(0.0, dot(normal, lightDir));
-                float lightMask = saturate(NdotL * 3.5);
-
                 float3 halfDir = normalize(lightDir + viewDir);
                 float NdotH = max(0.0, dot(normal, halfDir));
                 float shininess = clamp(_Shininess, 24.0, 110.0);
-                float spec = pow(NdotH, shininess) * lightMask;
+                float spec = pow(NdotH, shininess) * saturate(NdotL * 2.5);
                 spec = smoothstep(0.0, 1.0, spec);
 
                 fixed3 specCol = (_SpecularColor.a > 0.01) ? _SpecularColor.rgb : fixed3(1.0, 1.0, 1.0);
@@ -385,24 +416,21 @@ Shader "Custom/Water_Fallback"
                     reflCol = lerp(reflCol, reflCol * skyColor, 0.60);
                 }
 
-                float lightIntensity = 0.45 + 0.55 * NdotL;
+                float lightIntensity = 0.50 + 0.50 * NdotL;
                 float3 shallowColor = baseCol.rgb * lightIntensity;
-                float3 waterBody = lerp(deepCol * lightIntensity, shallowColor, 0.75);
+                float3 waterBody = lerp(deepCol * lightIntensity, shallowColor, 0.70);
                 float3 litWater = lerp(waterBody, reflCol, fresnel * 0.50) + specular;
 
-                // Smooth wave crest whitecaps (no harsh noise hashing, no white balls)
-                float crestFactor = smoothstep(0.42, 0.75, i.waveDispY);
-                float2 foamUV = i.worldPos.xz * (_FoamNoiseScale * 0.35) + _Time.y * (_FoamNoiseSpeed * 0.35) * float2(0.2, 0.15);
-                float foamMod = 0.60 + 0.40 * sin(foamUV.x * 2.5 + cos(foamUV.y * 2.0));
-                float crestFoam = crestFactor * (_FoamCrestIntensity * 0.30) * foamMod;
-
+                // Smooth wave crest foam
+                float crestWave = sin(i.worldPos.x * 0.10 + t * 0.8) * cos(i.worldPos.z * 0.10 + t * 0.6);
+                float crestFactor = smoothstep(0.55, 0.90, crestWave);
                 fixed4 foamCol = (_FoamColor.a > 0.01) ? _FoamColor : fixed4(0.92, 0.97, 1.0, 0.90);
-                float totalFoam = saturate(crestFoam * _FoamIntensity);
+                float totalFoam = saturate(crestFactor * (_FoamCrestIntensity * 0.35) * _FoamIntensity);
 
-                // Blend foam softly into lit water (max 35% opacity to avoid opaque white blotches)
-                float3 finalRGB = lerp(litWater, foamCol.rgb, totalFoam * 0.35);
+                // Blend foam softly into lit water (max 30% opacity to avoid opaque white blotches)
+                float3 finalRGB = lerp(litWater, foamCol.rgb, totalFoam * 0.30);
                 float alphaBase = max(baseCol.a, 0.65);
-                float finalAlpha = saturate(alphaBase + fresnel * 0.25 + totalFoam * 0.20);
+                float finalAlpha = saturate(alphaBase + fresnel * 0.25 + totalFoam * 0.15);
 
                 fixed4 result = fixed4(finalRGB, finalAlpha);
                 UNITY_APPLY_FOG(i.fogCoord, result);

@@ -2,7 +2,7 @@
 // Initially, assume uniform scale was an option using:
 // [Toggle] ASSUME_UNIFORM_SCALE ("Uniform Scale", Float) = 0
 // However, setting #pragma instancing_options inside #ifdef does not seem to be supported.
-Shader "Framework/Grass (Uniform Scale)" 
+Shader "Framework/Grass (Uniform Scale)"
 {
 	Properties 
 	{
