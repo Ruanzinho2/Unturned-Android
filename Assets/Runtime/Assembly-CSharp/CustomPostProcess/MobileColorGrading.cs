@@ -41,6 +41,7 @@ namespace SDG.Unturned
 		{
 			base.Init();
 			shader = Shader.Find("Hidden/Custom/MobileColorGrading");
+			ShaderLog.LogShaderInit("Hidden/Custom/MobileColorGrading", shader, "MobileColorGrading.Init");
 			exposureId = Shader.PropertyToID("_Exposure");
 			contrastId = Shader.PropertyToID("_Contrast");
 			saturationId = Shader.PropertyToID("_Saturation");

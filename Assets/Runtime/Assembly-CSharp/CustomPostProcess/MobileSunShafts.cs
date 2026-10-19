@@ -48,6 +48,7 @@ namespace SDG.Unturned
 		{
 			base.Init();
 			shader = Shader.Find("Hidden/Custom/MobileSunShafts");
+			ShaderLog.LogShaderInit("Hidden/Custom/MobileSunShafts", shader, "MobileSunShafts.Init");
 			colorBufferId = Shader.PropertyToID("_ColorBuffer");
 			sunPositionId = Shader.PropertyToID("_SunPosition");
 			sunColorId = Shader.PropertyToID("_SunColor");

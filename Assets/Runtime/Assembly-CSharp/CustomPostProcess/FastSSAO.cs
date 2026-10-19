@@ -44,6 +44,7 @@ namespace SDG.Unturned
 		{
 			base.Init();
 			shader = Shader.Find("Hidden/Custom/FastSSAO");
+			ShaderLog.LogShaderInit("Hidden/Custom/FastSSAO", shader, "FastSSAO.Init");
 			aoTexId = Shader.PropertyToID("_AOTex");
 			intensityId = Shader.PropertyToID("_Intensity");
 			radiusId = Shader.PropertyToID("_Radius");

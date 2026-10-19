@@ -190,6 +190,8 @@ namespace SDG.Unturned
 
 			Logs.printLine(text);
 
+			ShaderLog.LogUnityGraphicsMessage(text, stack, type);
+
 			switch (type)
 			{
 				case LogType.Assert:

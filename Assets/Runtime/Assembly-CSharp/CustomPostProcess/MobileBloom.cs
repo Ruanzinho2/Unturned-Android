@@ -44,6 +44,7 @@ namespace SDG.Unturned
 		{
 			base.Init();
 			shader = Shader.Find("Hidden/Custom/MobileBloom");
+			ShaderLog.LogShaderInit("Hidden/Custom/MobileBloom", shader, "MobileBloom.Init");
 			bloomTexId = Shader.PropertyToID("_BloomTex");
 			thresholdId = Shader.PropertyToID("_Threshold");
 			blurAmountId = Shader.PropertyToID("_BlurAmount");

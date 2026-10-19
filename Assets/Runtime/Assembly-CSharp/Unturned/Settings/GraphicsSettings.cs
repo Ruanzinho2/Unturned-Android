@@ -1103,6 +1103,24 @@ namespace SDG.Unturned
 			graphicsSettingsApplied?.Invoke();
 
 			UnturnedLog.info("Applied graphics settings");
+
+			try
+			{
+				ShaderLog.LogGraphicsSetting("Render Mode", renderMode, $"Camera RenderingPath={MainCamera.instance?.renderingPath}");
+				ShaderLog.LogGraphicsSetting("Water Quality", waterQuality, $"Keyword: _WATER_QUALITY_{waterQuality}, EdgeBlend={Shader.IsKeywordEnabled("WATER_EDGEBLEND_ON")}");
+				ShaderLog.LogGraphicsSetting("Lighting Quality", lightingQuality, $"Shadows={QualitySettings.shadows}, Cascades={QualitySettings.shadowCascades}, Dist={QualitySettings.shadowDistance}m, PixelLights={QualitySettings.pixelLightCount}");
+				ShaderLog.LogGraphicsSetting("Ambient Occlusion", isAmbientOcclusionEnabled, $"CameraDepthMode={MainCamera.instance?.depthTextureMode}");
+				ShaderLog.LogGraphicsSetting("Bloom", bloom, $"MobileBloom={bloom}");
+				ShaderLog.LogGraphicsSetting("Sun Shafts", sunShaftsQuality, $"MobileSunShafts={sunShaftsQuality}");
+				ShaderLog.LogGraphicsSetting("ACES Tone Mapping", isAcesFilmicEnabled, $"MobileColorGrading={isAcesFilmicEnabled}");
+				ShaderLog.LogGraphicsSetting("Foliage Quality", foliageQuality, $"InstanceDensity={SDG.Framework.Foliage.FoliageSettings.instanceDensity}, DrawDistance={SDG.Framework.Foliage.FoliageSettings.drawDistance}");
+				ShaderLog.LogGraphicsSetting("Terrain Quality", terrainQuality, $"BasemapDist={terrainBasemapDistance}m, HeightmapPixelError={terrainHeightmapPixelError}");
+				ShaderLog.LogGraphicsSetting("Anti-Aliasing", antiAliasingType, $"AntialiasingType={antiAliasingType}");
+				ShaderLog.LogGraphicsSetting("Anisotropic Filtering", anisotropicFilteringMode, $"QualitySettings.anisotropicFiltering={QualitySettings.anisotropicFiltering}");
+			}
+			catch
+			{
+			}
 		}
 
 		public static void restoreDefaults()
