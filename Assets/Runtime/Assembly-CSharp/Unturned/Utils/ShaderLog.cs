@@ -330,16 +330,11 @@ namespace SDG.Unturned
 			WriteLineRaw($" - Supported Render Target Count (MRT): {SystemInfo.supportedRenderTargetCount}");
 			WriteLineRaw($" - Supports Depth Format (RT): {SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.Depth)}");
 			WriteLineRaw($" - Supports Shadowmap Format: {SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.Shadowmap)}");
-			WriteLineRaw($" - Supports R8 Format (FastSSAO RT): {SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.R8)}");
+			WriteLineRaw($" - Supports R8 Format: {SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.R8)}");
+			WriteLineRaw($" - Supports Default Format (FastSSAO RT): {SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.Default)}");
 			WriteLineRaw($" - Supports ARGBHalf (HDR RT): {SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.ARGBHalf)}");
 			WriteLineRaw($" - Supports Default HDR Format: {SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.DefaultHDR)}");
 			WriteLineRaw("================================================================================");
-
-			// Diagnostics warnings for known limitations
-			if (!SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.R8))
-			{
-				Warning("Compat", "RenderTextureFormat.R8 is NOT supported on this GPU! FastSSAO will require ARGB32 or fallback RT.", throttle: false);
-			}
 
 			if (!SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.Depth))
 			{

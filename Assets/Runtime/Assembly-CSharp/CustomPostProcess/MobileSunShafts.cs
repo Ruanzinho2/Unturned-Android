@@ -5,7 +5,7 @@ using UnityEngine.Rendering.PostProcessing;
 namespace SDG.Unturned
 {
 	[Serializable]
-	[PostProcess(typeof(MobileSunShaftsRenderer), PostProcessEvent.BeforeStack, "Custom/MobileSunShafts")]
+	[PostProcess(typeof(MobileSunShaftsRenderer), PostProcessEvent.AfterStack, "Custom/MobileSunShafts")]
 	public sealed class MobileSunShafts : PostProcessEffectSettings
 	{
 		[Range(1, 4)]

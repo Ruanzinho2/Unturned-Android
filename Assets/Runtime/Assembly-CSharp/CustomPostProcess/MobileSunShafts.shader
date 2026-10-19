@@ -5,7 +5,7 @@ Shader "Hidden/Custom/MobileSunShafts"
         #include "Packages/com.unity.postprocessing/PostProcessing/Shaders/StdLib.hlsl"
 
         TEXTURE2D_SAMPLER2D(_MainTex, sampler_MainTex);
-        TEXTURE2D_SAMPLER2D(_ColorBuffer, sampler_ColorBuffer);
+        TEXTURE2D(_ColorBuffer);
         TEXTURE2D_SAMPLER2D(_CameraDepthTexture, sampler_CameraDepthTexture);
 
         float4 _SunPosition;
@@ -61,7 +61,11 @@ Shader "Hidden/Custom/MobileSunShafts"
         float4 FragComposite(VaryingsDefault i) : SV_Target
         {
             float4 sceneCol = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.texcoord);
-            float4 shaftCol = SAMPLE_TEXTURE2D(_ColorBuffer, sampler_ColorBuffer, i.texcoord) * _SunColor * _SunIntensity;
+            float4 shaftCol = SAMPLE_TEXTURE2D(_ColorBuffer, sampler_MainTex, i.texcoord) * _SunColor * _SunIntensity;
+            if (isnan(shaftCol.r) || isinf(shaftCol.r) || isnan(shaftCol.g) || isinf(shaftCol.g) || isnan(shaftCol.b) || isinf(shaftCol.b))
+            {
+                shaftCol = float4(0.0, 0.0, 0.0, 0.0);
+            }
 
             // Screen blend mode: 1 - (1 - scene) * (1 - shafts)
             float3 finalRGB = 1.0 - (1.0 - sceneCol.rgb) * (1.0 - saturate(shaftCol.rgb));

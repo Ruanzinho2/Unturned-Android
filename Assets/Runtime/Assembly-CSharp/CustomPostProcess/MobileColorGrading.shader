@@ -20,15 +20,21 @@ Shader "Hidden/Custom/MobileColorGrading"
             half c = 2.43h;
             half d = 0.59h;
             half e = 0.14h;
-            return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
+            half3 num = x * (a * x + b);
+            half3 den = max(x * (c * x + d) + e, 0.0001h);
+            return saturate(num / den);
         }
 
         float4 Frag(VaryingsDefault i) : SV_Target
         {
             float4 color = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.texcoordStereo);
+            if (isnan(color.r) || isinf(color.r) || isnan(color.g) || isinf(color.g) || isnan(color.b) || isinf(color.b))
+            {
+                color.rgb = float3(0.0, 0.0, 0.0);
+            }
 
             // 1. Exposure adjustment
-            half3 c = color.rgb * _Exposure;
+            half3 c = clamp(color.rgb, 0.0, 65504.0) * _Exposure;
 
             // 2. ACES Tone Mapping
             if (_AcesEnabled > 0.5h)

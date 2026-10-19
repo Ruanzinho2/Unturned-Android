@@ -5,7 +5,7 @@ Shader "Hidden/Custom/MobileBloom"
         #include "Packages/com.unity.postprocessing/PostProcessing/Shaders/StdLib.hlsl"
 
         TEXTURE2D_SAMPLER2D(_MainTex, sampler_MainTex);
-        TEXTURE2D_SAMPLER2D(_BloomTex, sampler_BloomTex);
+        TEXTURE2D(_BloomTex);
 
         float4 _MainTex_TexelSize;
         half _Threshold;
@@ -43,7 +43,12 @@ Shader "Hidden/Custom/MobileBloom"
         float4 FragComposite(VaryingsDefault i) : SV_Target
         {
             float4 sceneCol = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.texcoord);
-            float4 bloomCol = SAMPLE_TEXTURE2D(_BloomTex, sampler_BloomTex, i.texcoord) * _BloomColor * _BloomAmount;
+            float4 bloomCol = SAMPLE_TEXTURE2D(_BloomTex, sampler_MainTex, i.texcoord) * _BloomColor * _BloomAmount;
+            if (isnan(bloomCol.r) || isinf(bloomCol.r) || isnan(bloomCol.g) || isinf(bloomCol.g) || isnan(bloomCol.b) || isinf(bloomCol.b))
+            {
+                bloomCol = float4(0.0, 0.0, 0.0, 0.0);
+            }
+            bloomCol = clamp(bloomCol, 0.0, 10.0);
             return sceneCol + bloomCol;
         }
 

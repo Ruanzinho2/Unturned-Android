@@ -474,14 +474,14 @@ namespace SDG.Unturned
 					dof.active = false;
 					dof.focusDistance.Override(1.0f);
 
-					mobileBloom = profile.AddSettings<MobileBloom>();
-					mobileBloom.active = false;
-
 					fastSSAO = profile.AddSettings<FastSSAO>();
 					fastSSAO.active = false;
 
 					sunShafts = profile.AddSettings<MobileSunShafts>();
 					sunShafts.active = false;
+
+					mobileBloom = profile.AddSettings<MobileBloom>();
+					mobileBloom.active = false;
 
 					mobileColorGrading = profile.AddSettings<MobileColorGrading>();
 					mobileColorGrading.active = false;

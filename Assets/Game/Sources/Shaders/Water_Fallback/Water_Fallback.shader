@@ -155,7 +155,14 @@ Shader "Custom/Water_Fallback"
                 float4 sinP = sin(phase);
                 float4 cosP = cos(phase);
 
-                float4 QA = _GAmplitude * _GSteepness;
+                float4 steepness = clamp(_GSteepness, 0.0, 1.0);
+                float4 QA = _GAmplitude * steepness;
+                // Bound total wave steepness to 0.75 to eliminate self-intersecting loops and pinching
+                float sumSteepness = dot(QA, freq);
+                if (sumSteepness > 0.75)
+                {
+                    QA *= (0.75 / sumSteepness);
+                }
 
                 // Horizontal & vertical displacement
                 float dx = dot(QA, float4(d0.x * cosP.x, d1.x * cosP.y, d2.x * cosP.z, d3.x * cosP.w));
@@ -195,7 +202,13 @@ Shader "Custom/Water_Fallback"
                 float2 sinP = sin(phase);
                 float2 cosP = cos(phase);
 
-                float2 QA = _GAmplitude.xy * _GSteepness.xy;
+                float2 steepness = clamp(_GSteepness.xy, 0.0, 1.0);
+                float2 QA = _GAmplitude.xy * steepness;
+                float sumSteepness2 = dot(QA, freq);
+                if (sumSteepness2 > 0.75)
+                {
+                    QA *= (0.75 / sumSteepness2);
+                }
 
                 float dx = dot(QA, float2(d0.x * cosP.x, d1.x * cosP.y));
                 float dz = dot(QA, float2(d0.y * cosP.x, d1.y * cosP.y));
@@ -274,23 +287,27 @@ Shader "Custom/Water_Fallback"
 
                 #elif defined(_WATER_QUALITY_MEDIUM)
                 // ==================== MEDIUM QUALITY ====================
-                // Dual-octave smooth ripples (no straight parallel stripes), light-gated Blinn-Phong
+                // Dual-octave smooth ripples, light-gated Blinn-Phong, cubemap reflections
                 float t = _Time.y * _RippleSpeed;
                 float2 uv1 = i.worldPos.xz * (_RippleScale * 0.30) + float2(t * 0.25, t * 0.18);
                 float2 uv2 = i.worldPos.xz * (_RippleScale * 0.45) - float2(t * 0.15, -t * 0.22);
                 float w1 = sin(uv1.x + uv1.y * 1.2);
                 float w2 = cos(uv2.x * 1.1 - uv2.y * 0.9);
-                // 2D orthogonal ripple normal with gentle strength
-                float3 rippleNormal = normalize(float3((w1 + w2) * (_RippleStrength * 0.25), 1.0, (w1 - w2) * (_RippleStrength * 0.25)));
-                float3 normal = normalize(float3(i.worldNormal.xz + rippleNormal.xz * 0.35, i.worldNormal.y));
-                normal = (dot(normal, viewDir) >= 0.0) ? normal : -normal;
+                // Perturb normal in X and Z without swapping Y and Z axes
+                float3 rippleOffset = float3((w1 + w2) * (_RippleStrength * 0.20), 0.0, (w1 - w2) * (_RippleStrength * 0.20));
+                float3 normal = normalize(i.worldNormal + rippleOffset);
+                if (dot(normal, viewDir) < 0.0)
+                {
+                    normal = -normal;
+                }
 
                 float NdotL = max(0.0, dot(normal, lightDir));
                 float lightMask = saturate(NdotL * 3.0);
 
                 float3 halfDir = normalize(lightDir + viewDir);
                 float NdotH = max(0.0, dot(normal, halfDir));
-                float spec = pow(NdotH, clamp(_Shininess, 16.0, 128.0)) * lightMask;
+                float spec = pow(NdotH, clamp(_Shininess, 16.0, 96.0)) * lightMask;
+                spec = smoothstep(0.0, 1.0, spec);
                 fixed3 specCol = (_SpecularColor.a > 0.01) ? _SpecularColor.rgb : fixed3(1.0, 1.0, 1.0);
                 float3 specular = spec * specCol * (_SpecularColor.a * 0.45);
 
@@ -300,6 +317,16 @@ Shader "Custom/Water_Fallback"
 
                 fixed3 deepCol = (_DeepColor.a > 0.01) ? _DeepColor.rgb : (baseCol.rgb * 0.45);
                 fixed3 reflCol = (_ReflectionColor.a > 0.01) ? _ReflectionColor.rgb : (baseCol.rgb * 1.35);
+
+                // Sample cubemap reflection for sky / reflection probes (adapted from AleToonURP math)
+                float3 reflDir = reflect(-viewDir, normal);
+                half4 skyData = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflDir, 2.0);
+                half3 skyColor = DecodeHDR(skyData, unity_SpecCube0_HDR);
+                float skyBright = max(skyColor.r, max(skyColor.g, skyColor.b));
+                if (skyBright > 0.05)
+                {
+                    reflCol = lerp(reflCol, reflCol * skyColor, 0.50);
+                }
 
                 float lightIntensity = 0.45 + 0.55 * NdotL;
                 float3 shallowColor = baseCol.rgb * lightIntensity;
@@ -315,25 +342,29 @@ Shader "Custom/Water_Fallback"
 
                 #else
                 // ==================== HIGH & ULTRA QUALITY ====================
-                // Dual-octave ripples, smooth Gerstner crests, light-gated specular
+                // Dual-octave ripples, smooth Gerstner crests, cubemap reflection, anti-aliased specular
                 float t = _Time.y * _RippleSpeed;
                 float2 uv1 = i.worldPos.xz * (_RippleScale * 0.35) + float2(t * 0.30, t * 0.20);
                 float2 uv2 = i.worldPos.xz * (_RippleScale * 0.60) - float2(t * 0.18, -t * 0.25);
 
                 float w1 = sin(uv1.x + uv1.y * 1.2);
                 float w2 = cos(uv2.x * 1.1 - uv2.y * 0.85);
-                float3 rippleNormal = normalize(float3((w1 + w2) * (_RippleStrength * 0.35), 1.0, (w1 - w2) * (_RippleStrength * 0.35)));
-
-                float3 normal = normalize(float3(i.worldNormal.xz + rippleNormal.xz * 0.40, i.worldNormal.y));
-                normal = (dot(normal, viewDir) >= 0.0) ? normal : -normal;
+                // Perturb normal in X and Z without swapping Y and Z axes
+                float3 rippleOffset = float3((w1 + w2) * (_RippleStrength * 0.25), 0.0, (w1 - w2) * (_RippleStrength * 0.25));
+                float3 normal = normalize(i.worldNormal + rippleOffset);
+                if (dot(normal, viewDir) < 0.0)
+                {
+                    normal = -normal;
+                }
 
                 float NdotL = max(0.0, dot(normal, lightDir));
                 float lightMask = saturate(NdotL * 3.5);
 
                 float3 halfDir = normalize(lightDir + viewDir);
                 float NdotH = max(0.0, dot(normal, halfDir));
-                float shininess = clamp(_Shininess, 24.0, 256.0);
+                float shininess = clamp(_Shininess, 24.0, 110.0);
                 float spec = pow(NdotH, shininess) * lightMask;
+                spec = smoothstep(0.0, 1.0, spec);
 
                 fixed3 specCol = (_SpecularColor.a > 0.01) ? _SpecularColor.rgb : fixed3(1.0, 1.0, 1.0);
                 float3 specular = spec * specCol * (_SpecularColor.a * 0.50);
@@ -343,6 +374,16 @@ Shader "Custom/Water_Fallback"
 
                 fixed3 deepCol = (_DeepColor.a > 0.01) ? _DeepColor.rgb : (baseCol.rgb * 0.45);
                 fixed3 reflCol = (_ReflectionColor.a > 0.01) ? _ReflectionColor.rgb : (baseCol.rgb * 1.35);
+
+                // Sample cubemap reflection for sky / reflection probes (adapted from AleToonURP math)
+                float3 reflDir = reflect(-viewDir, normal);
+                half4 skyData = UNITY_SAMPLE_TEXCUBE_LOD(unity_SpecCube0, reflDir, 1.5);
+                half3 skyColor = DecodeHDR(skyData, unity_SpecCube0_HDR);
+                float skyBright = max(skyColor.r, max(skyColor.g, skyColor.b));
+                if (skyBright > 0.05)
+                {
+                    reflCol = lerp(reflCol, reflCol * skyColor, 0.60);
+                }
 
                 float lightIntensity = 0.45 + 0.55 * NdotL;
                 float3 shallowColor = baseCol.rgb * lightIntensity;
@@ -355,20 +396,8 @@ Shader "Custom/Water_Fallback"
                 float foamMod = 0.60 + 0.40 * sin(foamUV.x * 2.5 + cos(foamUV.y * 2.0));
                 float crestFoam = crestFactor * (_FoamCrestIntensity * 0.30) * foamMod;
 
-                float shoreFoam = 0.0;
-                #if defined(_WATER_QUALITY_ULTRA) && (defined(SOFTPARTICLES_ON) || defined(_CAMERA_DEPTH_ON)) && !defined(SHADER_API_MOBILE) && !defined(SHADER_API_VULKAN) && !defined(SHADER_API_GLES3)
-                float sceneZ = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE_PROJ(_CameraDepthTexture, UNITY_PROJ_COORD(i.screenPos)));
-                float partZ = i.screenPos.w;
-                float depthDiff = sceneZ - partZ;
-                if (depthDiff > 0.0 && depthDiff < (_EdgeFoamThreshold * 20.0))
-                {
-                    float edgeT = saturate(1.0 - (depthDiff / (_EdgeFoamThreshold * 20.0)));
-                    shoreFoam = edgeT * (_EdgeFoamIntensity * 0.35) * foamMod;
-                }
-                #endif
-
                 fixed4 foamCol = (_FoamColor.a > 0.01) ? _FoamColor : fixed4(0.92, 0.97, 1.0, 0.90);
-                float totalFoam = saturate((crestFoam + shoreFoam) * _FoamIntensity);
+                float totalFoam = saturate(crestFoam * _FoamIntensity);
 
                 // Blend foam softly into lit water (max 35% opacity to avoid opaque white blotches)
                 float3 finalRGB = lerp(litWater, foamCol.rgb, totalFoam * 0.35);

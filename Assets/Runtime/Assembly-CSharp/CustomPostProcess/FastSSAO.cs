@@ -5,7 +5,7 @@ using UnityEngine.Rendering.PostProcessing;
 namespace SDG.Unturned
 {
 	[Serializable]
-	[PostProcess(typeof(FastSSAORenderer), PostProcessEvent.BeforeStack, "Custom/FastSSAO")]
+	[PostProcess(typeof(FastSSAORenderer), PostProcessEvent.AfterStack, "Custom/FastSSAO")]
 	public sealed class FastSSAO : PostProcessEffectSettings
 	{
 		[Range(0f, 3f)]
@@ -72,8 +72,8 @@ namespace SDG.Unturned
 			int width = Mathf.Max(context.width / 2, 16);
 			int height = Mathf.Max(context.height / 2, 16);
 
-			context.command.GetTemporaryRT(rt0Id, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.R8);
-			context.command.GetTemporaryRT(rt1Id, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.R8);
+			context.command.GetTemporaryRT(rt0Id, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
+			context.command.GetTemporaryRT(rt1Id, width, height, 0, FilterMode.Bilinear, RenderTextureFormat.Default);
 
 			// Pass 0: Generate AO from camera depth
 			context.command.BlitFullscreenTriangle(context.source, rt0Id, sheet, 0);
