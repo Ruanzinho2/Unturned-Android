@@ -327,7 +327,7 @@ namespace SDG.Unturned
 			WriteLineRaw($" - Supports 2D Array Textures: {SystemInfo.supports2DArrayTextures}");
 			WriteLineRaw($" - Supports 3D Textures: {SystemInfo.supports3DTextures}");
 			WriteLineRaw($" - Supports Cubemap RenderTarget: {SystemInfo.supportsRenderToCubemap}");
-			WriteLineRaw($" - Supports Multiple Render Targets (MRT): {SystemInfo.supportsSeparatedRenderTargets}");
+			WriteLineRaw($" - Supported Render Target Count (MRT): {SystemInfo.supportedRenderTargetCount}");
 			WriteLineRaw($" - Supports Depth Format (RT): {SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.Depth)}");
 			WriteLineRaw($" - Supports Shadowmap Format: {SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.Shadowmap)}");
 			WriteLineRaw($" - Supports R8 Format (FastSSAO RT): {SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.R8)}");
