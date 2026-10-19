@@ -93,7 +93,7 @@ namespace SDG.Unturned
 			}
 
 			// Pass 2: Composite onto destination
-			sheet.properties.SetTexture(bloomTexId, readRT);
+			context.command.SetGlobalTexture(bloomTexId, readRT);
 			context.command.BlitFullscreenTriangle(context.source, context.destination, sheet, 2);
 
 			context.command.ReleaseTemporaryRT(rt0Id);
