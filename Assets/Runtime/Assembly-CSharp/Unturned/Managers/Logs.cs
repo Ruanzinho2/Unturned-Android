@@ -294,7 +294,6 @@ namespace SDG.Unturned
 				debugLog.close();
 				debugLog = null;
 			}
-			ShaderLog.Close();
 		}
 
 		public void awake()
