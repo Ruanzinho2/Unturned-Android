@@ -17,6 +17,7 @@ Shader "Hidden/Custom/FastSSAO"
         float _AOFadeEnd;
 
         // Pass 0: Screen-Space Occlusion Generation
+        // Pass 0: Screen-Space Occlusion Generation (Concave Crevice Contact SSAO)
         float4 FragAO(VaryingsDefault i) : SV_Target
         {
             float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoordStereo);
@@ -31,41 +32,69 @@ Shader "Hidden/Custom/FastSSAO"
             float eyeDepth = LinearEyeDepth(rawDepth);
             float fade = saturate((eyeDepth - _AOFadeStart) / max(1.0, _AOFadeEnd - _AOFadeStart));
 
-            // Scale sample radius in screen space based on depth and aspect ratio
             float aspect = (_MainTex_TexelSize.w > 0.0) ? (_MainTex_TexelSize.z / _MainTex_TexelSize.w) : 1.0;
             if (isnan(aspect) || isinf(aspect) || aspect <= 0.0)
             {
                 aspect = 1.0;
             }
 
-            // World-space search radius scaled to screen pixels (clamped to prevent giant halos on close objects)
-            float rScreen = clamp(_Radius / max(0.4, eyeDepth * 0.4), 0.001, 0.012);
+            // Tightly clamp screen radius (max 0.6% screen) to restrict AO strictly to contact creases
+            float rScreen = clamp(_Radius / max(0.6, eyeDepth * 0.5), 0.001, 0.006);
             float2 radiusScaled = rScreen * float2(1.0, aspect);
 
-            const float2 samples[4] = {
-                float2( 1.0,  0.0),
-                float2(-1.0,  0.0),
-                float2( 0.0,  1.0),
-                float2( 0.0, -1.0)
-            };
+            // 4 orthogonal samples: Right (+X), Left (-X), Up (+Y), Down (-Y)
+            float dR = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord + float2(radiusScaled.x, 0.0)));
+            float dL = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord - float2(radiusScaled.x, 0.0)));
+            float dU = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord + float2(0.0, radiusScaled.y)));
+            float dD = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord - float2(0.0, radiusScaled.y)));
 
-            // Max occlusion range: 0.35m (tight contact shadow, eliminates background halo)
-            const float maxDist = 0.35;
+            // Contact threshold (8 cm): objects disconnected by more than 8cm can NEVER cast SSAO
+            const float maxContact = 0.08;
+
+            // Discontinuity checks: disconnected foreground or background objects are rejected
+            bool validR = abs(dR - eyeDepth) < maxContact;
+            bool validL = abs(dL - eyeDepth) < maxContact;
+            bool validU = abs(dU - eyeDepth) < maxContact;
+            bool validD = abs(dD - eyeDepth) < maxContact;
+
             float occlusion = 0.0;
-            for (int k = 0; k < 4; k++)
+
+            // Horizontal concavity (crevice test along X)
+            // If the surface is flat (wall or floor), dR + dL == 2 * eyeDepth, curvature is 0.
+            // If one sample is on a foreground silhouette, valid check fails and wall receives ZERO occlusion!
+            if (validR && validL)
             {
-                float2 sampleUV = i.texcoord + samples[k] * radiusScaled;
-                float sampleRaw = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, sampleUV);
-                float sampleEye = LinearEyeDepth(sampleRaw);
-                float diff = eyeDepth - sampleEye;
-                // Only occlude if sample is in front of the center point and within contact distance
-                if (diff > 0.01 && diff < maxDist)
+                float curveX = eyeDepth - (dR + dL) * 0.5;
+                if (curveX > 0.003)
                 {
-                    occlusion += (1.0 - diff / maxDist);
+                    occlusion += saturate(curveX / (maxContact * 0.5));
                 }
             }
 
-            occlusion = (occlusion * 0.25) * _Intensity * (1.0 - fade);
+            // Vertical concavity (crevice test along Y)
+            if (validU && validD)
+            {
+                float curveY = eyeDepth - (dU + dD) * 0.5;
+                if (curveY > 0.003)
+                {
+                    occlusion += saturate(curveY / (maxContact * 0.5));
+                }
+            }
+
+            // Diagonal corner contacts (at 45-degree angle for tight wall-floor corners)
+            float2 diagScaled = radiusScaled * 0.7071;
+            float d00 = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord + float2( diagScaled.x,  diagScaled.y)));
+            float d11 = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord - float2( diagScaled.x,  diagScaled.y)));
+            if (abs(d00 - eyeDepth) < maxContact && abs(d11 - eyeDepth) < maxContact)
+            {
+                float curveDiag = eyeDepth - (d00 + d11) * 0.5;
+                if (curveDiag > 0.003)
+                {
+                    occlusion += saturate(curveDiag / (maxContact * 0.5));
+                }
+            }
+
+            occlusion = (occlusion * 0.333) * _Intensity * (1.0 - fade);
             if (isnan(occlusion) || isinf(occlusion))
             {
                 occlusion = 0.0;
@@ -93,11 +122,11 @@ Shader "Hidden/Custom/FastSSAO"
             float d2 = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord + float2(-off.x, off.y)));
             float d3 = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sampler_CameraDepthTexture, i.texcoord + float2(off.x, -off.y)));
 
-            // Sharp depth boundary cutoff (0.2m)
-            float w0 = saturate(1.0 - abs(centerDepth - d0) * 5.0);
-            float w1 = saturate(1.0 - abs(centerDepth - d1) * 5.0);
-            float w2 = saturate(1.0 - abs(centerDepth - d2) * 5.0);
-            float w3 = saturate(1.0 - abs(centerDepth - d3) * 5.0);
+            // Sharp depth boundary cutoff (0.08m = 8cm cutoff)
+            float w0 = saturate(1.0 - abs(centerDepth - d0) * 12.5);
+            float w1 = saturate(1.0 - abs(centerDepth - d1) * 12.5);
+            float w2 = saturate(1.0 - abs(centerDepth - d2) * 12.5);
+            float w3 = saturate(1.0 - abs(centerDepth - d3) * 12.5);
 
             float totalWeight = 1.0 + (w0 + w1 + w2 + w3) * 0.5;
             half ao = (center + (s0 * w0 + s1 * w1 + s2 * w2 + s3 * w3) * 0.5h) / totalWeight;

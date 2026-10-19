@@ -234,8 +234,8 @@ Shader "Custom/Water_Fallback"
                 // Low quality: completely flat plane, zero trigonometry in vertex shader
                 waveDisp = float3(0.0, 0.0, 0.0);
                 #elif defined(_WATER_QUALITY_MEDIUM)
-                // Medium quality: Gentle long-wavelength ocean swell (avoids 64m mesh aliasing)
-                float swell = sin(worldPos.x * 0.035 + _Time.y * 0.8) * cos(worldPos.z * 0.028 + _Time.y * 0.6) * (_GerstnerIntensity * 0.25);
+                // Medium quality: Smooth directional ocean swell (avoids 64m mesh aliasing and product checkerboards)
+                float swell = (sin(worldPos.x * 0.032 + worldPos.z * 0.018 + _Time.y * 0.80) + cos(worldPos.x * 0.018 - worldPos.z * 0.026 + _Time.y * 0.60)) * (_GerstnerIntensity * 0.20);
                 waveDisp = float3(0.0, swell, 0.0);
                 #else
                 // High / Ultra: Smooth dual-harmonic ocean swell (80m-180m wavelengths)
@@ -294,25 +294,25 @@ Shader "Custom/Water_Fallback"
 
                 #elif defined(_WATER_QUALITY_MEDIUM)
                 // ==================== MEDIUM QUALITY ====================
-                // Multi-directional 4-wave interference per-pixel, cubemap reflection, anti-aliased specular
+                // Directional wind wave trains per-pixel, cubemap reflection, organic specular column
                 float2 p = i.worldPos.xz * (_RippleScale * 0.12);
                 float t = _Time.y * _RippleSpeed;
 
-                // 4 non-parallel wave trains across 360 degrees (eliminates parallel stripes)
+                // 4 directional waves within wind cone (eliminates orthogonal checkerboards and circular domes)
                 float4 dotP = float4(
-                    p.x *  0.866 + p.y *  0.500,
-                   -p.x *  0.500 + p.y *  0.866,
-                   -p.x *  0.819 - p.y *  0.574,
-                    p.x *  0.574 - p.y *  0.819
+                    p.x * 0.978 + p.y * 0.208,  // 12 deg
+                    p.x * 0.848 + p.y * 0.530,  // 32 deg
+                    p.x * 0.985 - p.y * 0.174,  // -10 deg
+                    p.x * 0.669 + p.y * 0.743   // 48 deg
                 );
-                float4 freq = float4(1.0, 1.35, 1.85, 2.45);
-                float4 speed = float4(1.1, -0.9, 1.4, -1.2) * t;
+                float4 freq = float4(1.0, 1.47, 2.13, 2.89);
+                float4 speed = float4(1.15, -0.95, 1.35, -1.10) * t;
                 float4 phase = dotP * freq + speed;
                 float4 cosP = cos(phase);
 
-                float4 amp = float4(0.25, 0.18, 0.12, 0.08) * (_RippleStrength * 0.22);
-                float dNx = dot(amp * freq, float4( 0.866 * cosP.x, -0.500 * cosP.y, -0.819 * cosP.z,  0.574 * cosP.w));
-                float dNz = dot(amp * freq, float4( 0.500 * cosP.x,  0.866 * cosP.y, -0.574 * cosP.z, -0.819 * cosP.w));
+                float4 amp = float4(0.26, 0.17, 0.11, 0.06) * (_RippleStrength * 0.22);
+                float dNx = dot(amp * freq, float4( 0.978 * cosP.x,  0.848 * cosP.y,  0.985 * cosP.z,  0.669 * cosP.w));
+                float dNz = dot(amp * freq, float4( 0.208 * cosP.x,  0.530 * cosP.y, -0.174 * cosP.z,  0.743 * cosP.w));
 
                 float3 normal = normalize(float3(-dNx, 1.0, -dNz));
                 if (dot(normal, viewDir) < 0.0)
@@ -323,8 +323,8 @@ Shader "Custom/Water_Fallback"
                 float NdotL = max(0.0, dot(normal, lightDir));
                 float3 halfDir = normalize(lightDir + viewDir);
                 float NdotH = max(0.0, dot(normal, halfDir));
-                float spec = pow(NdotH, clamp(_Shininess, 16.0, 96.0)) * saturate(NdotL * 2.5);
-                spec = smoothstep(0.0, 1.0, spec);
+                float spec = pow(NdotH, clamp(_Shininess, 20.0, 64.0)) * saturate(NdotL * 2.2);
+                spec = spec * spec; // Natural quadratic specular falloff without circular hot spots
                 fixed3 specCol = (_SpecularColor.a > 0.01) ? _SpecularColor.rgb : fixed3(1.0, 1.0, 1.0);
                 float3 specular = spec * specCol * (_SpecularColor.a * 0.45);
 
@@ -359,30 +359,31 @@ Shader "Custom/Water_Fallback"
 
                 #else
                 // ==================== HIGH & ULTRA QUALITY ====================
-                // Multi-directional analytical waves + capillary ripples + cubemap reflection + smooth foam
+                // Directional analytical waves + capillary ripples + cubemap reflection (zero foam circles)
                 float2 p = i.worldPos.xz * (_RippleScale * 0.12);
                 float t = _Time.y * _RippleSpeed;
 
-                // 4 non-parallel wave trains across 360 degrees
+                // 4 directional waves within wind cone (eliminates orthogonal checkerboards and circular domes)
                 float4 dotP = float4(
-                    p.x *  0.866 + p.y *  0.500,
-                   -p.x *  0.500 + p.y *  0.866,
-                   -p.x *  0.819 - p.y *  0.574,
-                    p.x *  0.574 - p.y *  0.819
+                    p.x * 0.978 + p.y * 0.208,  // 12 deg
+                    p.x * 0.848 + p.y * 0.530,  // 32 deg
+                    p.x * 0.985 - p.y * 0.174,  // -10 deg
+                    p.x * 0.669 + p.y * 0.743   // 48 deg
                 );
-                float4 freq = float4(1.0, 1.35, 1.85, 2.45);
-                float4 speed = float4(1.1, -0.9, 1.4, -1.2) * t;
+                float4 freq = float4(1.0, 1.47, 2.13, 2.89);
+                float4 speed = float4(1.15, -0.95, 1.35, -1.10) * t;
                 float4 phase = dotP * freq + speed;
                 float4 cosP = cos(phase);
 
-                float4 amp = float4(0.30, 0.22, 0.15, 0.10) * (_RippleStrength * 0.24);
-                float dNx = dot(amp * freq, float4( 0.866 * cosP.x, -0.500 * cosP.y, -0.819 * cosP.z,  0.574 * cosP.w));
-                float dNz = dot(amp * freq, float4( 0.500 * cosP.x,  0.866 * cosP.y, -0.574 * cosP.z, -0.819 * cosP.w));
+                float4 amp = float4(0.28, 0.18, 0.12, 0.07) * (_RippleStrength * 0.24);
+                float dNx = dot(amp * freq, float4( 0.978 * cosP.x,  0.848 * cosP.y,  0.985 * cosP.z,  0.669 * cosP.w));
+                float dNz = dot(amp * freq, float4( 0.208 * cosP.x,  0.530 * cosP.y, -0.174 * cosP.z,  0.743 * cosP.w));
 
-                // Micro capillary chop
-                float2 capUV = i.worldPos.xz * (_RippleScale * 0.50) + float2(t * 0.35, -t * 0.25);
-                float capW = sin(capUV.x * 1.4 + capUV.y * 0.9) * cos(capUV.x * 0.8 - capUV.y * 1.5);
-                float3 fineOffset = float3(capW * (_RippleStrength * 0.05), 0.0, capW * (_RippleStrength * 0.05));
+                // Micro capillary ripples along wind flow
+                float2 capUV = i.worldPos.xz * (_RippleScale * 0.45) + float2(t * 0.40, t * 0.15);
+                float capW1 = sin(capUV.x * 1.6 + capUV.y * 0.7);
+                float capW2 = cos(capUV.x * 0.9 - capUV.y * 1.4);
+                float3 fineOffset = float3(-capW1 * (_RippleStrength * 0.04), 0.0, -capW2 * (_RippleStrength * 0.04));
 
                 float3 normal = normalize(float3(-dNx, 1.0, -dNz) + fineOffset);
                 if (dot(normal, viewDir) < 0.0)
@@ -393,9 +394,9 @@ Shader "Custom/Water_Fallback"
                 float NdotL = max(0.0, dot(normal, lightDir));
                 float3 halfDir = normalize(lightDir + viewDir);
                 float NdotH = max(0.0, dot(normal, halfDir));
-                float shininess = clamp(_Shininess, 24.0, 110.0);
-                float spec = pow(NdotH, shininess) * saturate(NdotL * 2.5);
-                spec = smoothstep(0.0, 1.0, spec);
+                float shininess = clamp(_Shininess, 24.0, 72.0);
+                float spec = pow(NdotH, shininess) * saturate(NdotL * 2.2);
+                spec = spec * spec; // Natural quadratic specular falloff without circular hot spots
 
                 fixed3 specCol = (_SpecularColor.a > 0.01) ? _SpecularColor.rgb : fixed3(1.0, 1.0, 1.0);
                 float3 specular = spec * specCol * (_SpecularColor.a * 0.50);
@@ -421,18 +422,10 @@ Shader "Custom/Water_Fallback"
                 float3 waterBody = lerp(deepCol * lightIntensity, shallowColor, 0.70);
                 float3 litWater = lerp(waterBody, reflCol, fresnel * 0.50) + specular;
 
-                // Smooth wave crest foam
-                float crestWave = sin(i.worldPos.x * 0.10 + t * 0.8) * cos(i.worldPos.z * 0.10 + t * 0.6);
-                float crestFactor = smoothstep(0.55, 0.90, crestWave);
-                fixed4 foamCol = (_FoamColor.a > 0.01) ? _FoamColor : fixed4(0.92, 0.97, 1.0, 0.90);
-                float totalFoam = saturate(crestFactor * (_FoamCrestIntensity * 0.35) * _FoamIntensity);
-
-                // Blend foam softly into lit water (max 30% opacity to avoid opaque white blotches)
-                float3 finalRGB = lerp(litWater, foamCol.rgb, totalFoam * 0.30);
                 float alphaBase = max(baseCol.a, 0.65);
-                float finalAlpha = saturate(alphaBase + fresnel * 0.25 + totalFoam * 0.15);
+                float finalAlpha = saturate(alphaBase + fresnel * 0.25);
 
-                fixed4 result = fixed4(finalRGB, finalAlpha);
+                fixed4 result = fixed4(litWater, finalAlpha);
                 UNITY_APPLY_FOG(i.fogCoord, result);
                 return result;
                 #endif
