@@ -29,13 +29,19 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler
 	public Canvas ParentCanvas { get; set; }
 	public RectTransform canvasRectTrans;
 
-	public float xSensitivity = 1.75f;
-	public float ySensitivity = 1.75f;
-	public float _xSensitivity = 1.75f;
-	public float _ySensitivity = 1.75f;
+	public float touchSizeWidth = 50f;
+	public float touchSizeHeight = 100f;
+	public float touchSizePositionX = 100f;
+	public float touchSizePositionY = 0f;
+	public float screenWidthReference = 1280f;
 
-	public float xGravity = 10f;
-	public float yGravity = 10f;
+	public float xSensitivity = 0.1f;
+	public float ySensitivity = 0.05f;
+	public float _xSensitivity = 128f;
+	public float _ySensitivity = 64f;
+
+	public float xGravity = 0.5f;
+	public float yGravity = 0.5f;
 
 	public bool displayBase = false;
 	public Image baseImage;
@@ -104,6 +110,8 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler
 
 	private void Start()
 	{
+		_xSensitivity = xSensitivity * screenWidthReference;
+		_ySensitivity = ySensitivity * screenWidthReference;
 		UpdateTouchpadPositioning();
 	}
 
@@ -115,7 +123,6 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler
 		_inputId = touchInfo.pointerId;
 		previousPosition = touchInfo.position;
 		currentPosition = touchInfo.position;
-		accumulatedDelta = Vector2.zero;
 
 		tapCount++;
 		currentTapTime = tapCountDuration;
@@ -130,10 +137,6 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler
 		if (!inputActive || touchInfo.pointerId != _inputId) return;
 
 		currentPosition = touchInfo.position;
-		Vector2 delta = currentPosition - previousPosition;
-		previousPosition = currentPosition;
-
-		accumulatedDelta += delta;
 	}
 
 	public void OnPointerUp(PointerEventData touchInfo)
@@ -149,7 +152,7 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler
 	/// </summary>
 	public void FeedExternalLookDelta(Vector2 delta)
 	{
-		accumulatedDelta += delta;
+		currentPosition += delta;
 	}
 
 	private void Update()
@@ -169,18 +172,23 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler
 
 	public void UpdateTouchPad()
 	{
-		float referenceWidth = Screen.width > 0 ? (float)Screen.width : 1920f;
-		float referenceHeight = Screen.height > 0 ? (float)Screen.height : 1080f;
+		float referenceWidth = (screenWidth > 0f) ? screenWidth : (Screen.width > 0 ? (float)Screen.width : 1920f);
+		float referenceHeight = (screenHeight > 0f) ? screenHeight : (Screen.height > 0 ? (float)Screen.height : 1080f);
 
-		// Normalize delta by resolution and sensitivity
-		float targetH = (accumulatedDelta.x / referenceWidth) * (xSensitivity * 50f);
-		float targetV = (accumulatedDelta.y / referenceHeight) * (ySensitivity * 50f);
+		Vector2 diff = currentPosition - previousPosition;
+		if (ParentCanvas != null && ParentCanvas.scaleFactor > 0f)
+		{
+			diff /= ParentCanvas.scaleFactor;
+		}
 
-		horizontalValue = targetH;
-		verticalValue = targetV;
+		float targetH = (diff.x / referenceWidth) * _xSensitivity;
+		float targetV = (diff.y / referenceHeight) * _ySensitivity;
 
-		// Consume accumulated delta per frame
-		accumulatedDelta = Vector2.zero;
+		// Authentic Russian APK exponential smoothing
+		horizontalValue = Mathf.Lerp(horizontalValue, targetH, xGravity);
+		verticalValue = Mathf.Lerp(verticalValue, targetV, yGravity);
+
+		previousPosition = currentPosition;
 	}
 
 	public void ResetTouchpad()
@@ -189,14 +197,18 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler
 		_inputId = -1;
 		horizontalValue = 0f;
 		verticalValue = 0f;
-		accumulatedDelta = Vector2.zero;
+		previousPosition = currentPosition;
 	}
 
 	public void UpdateTouchpadPositioning()
 	{
 		if (baseTrans != null)
 		{
-			touchpadRect = baseTrans.rect;
+			if (ParentCanvas == null) ParentCanvas = GetComponentInParent<Canvas>();
+			float scale = (ParentCanvas != null && ParentCanvas.scaleFactor > 0f) ? ParentCanvas.scaleFactor : 1f;
+			Vector2 size = baseTrans.sizeDelta * scale;
+			Vector2 pos = (Vector2)baseTrans.position - (size * 0.5f);
+			touchpadRect = new Rect(pos.x, pos.y, size.x, size.y);
 		}
 	}
 

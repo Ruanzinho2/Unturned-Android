@@ -111,6 +111,12 @@ namespace Keyneed.MobileController
 			lookImg.raycastTarget = true;
 			UltimateTouchpad touchpad = lookZoneGo.AddComponent<UltimateTouchpad>();
 			touchpad.touchpadName = "LookTouchPad_8tdg5543ffre";
+			touchpad.xSensitivity = 0.1f;
+			touchpad.ySensitivity = 0.05f;
+			touchpad.screenWidthReference = 1280f;
+			touchpad.xGravity = 0.5f;
+			touchpad.yGravity = 0.5f;
+			touchpad.useTouchInput = false;
 			lookZoneGo.AddComponent<UltimateTouchpadScreenSizeUpdater>();
 
 			CanvasGroup lookCg = lookZoneGo.AddComponent<CanvasGroup>();
