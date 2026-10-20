@@ -14,7 +14,8 @@ namespace SDG.Unturned
 		static InputBroker()
 		{
 #if UNITY_ANDROID
-			Input.simulateMouseWithTouches = false;
+			Input.multiTouchEnabled = true;
+			Input.simulateMouseWithTouches = true;
 #endif
 		}
 

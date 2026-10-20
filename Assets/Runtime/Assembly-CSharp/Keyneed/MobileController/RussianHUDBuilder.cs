@@ -23,7 +23,8 @@ namespace Keyneed.MobileController
 		public static void EnsureHUDExists()
 		{
 #if UNITY_ANDROID
-			Input.simulateMouseWithTouches = false;
+			Input.multiTouchEnabled = true;
+			Input.simulateMouseWithTouches = true;
 #endif
 
 			// Ensure active EventSystem exists in the scene so touch inputs reach UGUI handlers
@@ -32,7 +33,16 @@ namespace Keyneed.MobileController
 				GameObject esGo = new GameObject("EventSystem");
 				DontDestroyOnLoad(esGo);
 				esGo.AddComponent<EventSystem>();
-				esGo.AddComponent<StandaloneInputModule>();
+				StandaloneInputModule sim = esGo.AddComponent<StandaloneInputModule>();
+				sim.forceModuleActive = true;
+			}
+			else
+			{
+				StandaloneInputModule sim = EventSystem.current.GetComponent<StandaloneInputModule>();
+				if (sim != null)
+				{
+					sim.forceModuleActive = true;
+				}
 			}
 
 			if (_instance != null && _instance.gameObject != null) return;

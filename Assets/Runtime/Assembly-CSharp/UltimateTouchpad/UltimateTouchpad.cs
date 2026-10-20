@@ -129,21 +129,55 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IEventSystem
 		UpdateTouchpadPositioning();
 	}
 
+	private void Update()
+	{
+		// Direct hardware touch polling fallback (guarantees operation if EventSystem misses events)
+		if (Input.touchCount > 0)
+		{
+			for (int i = 0; i < Input.touchCount; i++)
+			{
+				Touch t = Input.GetTouch(i);
+				if (!inputActive)
+				{
+					// Right 55% of the screen initiates camera look
+					if (t.phase == TouchPhase.Began && t.position.x >= Screen.width * 0.45f)
+					{
+						ProcessOnInputDown(t.position, t.fingerId);
+						break;
+					}
+				}
+				else if (t.fingerId == _inputId)
+				{
+					if (t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary)
+					{
+						ProcessOnInputMoved(t.position, t.fingerId);
+					}
+					else if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
+					{
+						ProcessOnInputUp(t.position, t.fingerId);
+					}
+					break;
+				}
+			}
+		}
+		else if (inputActive && _inputId >= 0)
+		{
+			ProcessOnInputUp(Vector2.zero, _inputId);
+		}
+	}
+
 	public void OnPointerDown(PointerEventData touchInfo)
 	{
-		if (useTouchInput) return;
 		ProcessOnInputDown(touchInfo.position, touchInfo.pointerId);
 	}
 
 	public void OnDrag(PointerEventData touchInfo)
 	{
-		if (useTouchInput) return;
 		ProcessOnInputMoved(touchInfo.position, touchInfo.pointerId);
 	}
 
 	public void OnPointerUp(PointerEventData touchInfo)
 	{
-		if (useTouchInput) return;
 		ProcessOnInputUp(touchInfo.position, touchInfo.pointerId);
 	}
 

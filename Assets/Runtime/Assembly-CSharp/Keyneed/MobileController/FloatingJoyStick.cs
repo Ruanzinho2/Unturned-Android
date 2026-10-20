@@ -35,6 +35,25 @@ namespace Keyneed.MobileController
 		private bool _isDragging = false;
 		private RectTransform _parentRect;
 
+		private void OnEnable()
+		{
+			SceneManager.sceneLoaded += OnSceneLoaded;
+		}
+
+		private void OnDisable()
+		{
+			SceneManager.sceneLoaded -= OnSceneLoaded;
+		}
+
+		private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+		{
+			bool isMenu = string.Equals(scene.name, "Menu");
+			if (gameObject.activeSelf == isMenu)
+			{
+				gameObject.SetActive(!isMenu);
+			}
+		}
+
 		private void Start()
 		{
 			onGameStart?.Invoke();
@@ -59,14 +78,73 @@ namespace Keyneed.MobileController
 			}
 		}
 
-		public void OnPointerDown(PointerEventData eventData)
+		private void Update()
 		{
 			if (ControllerManager.editMode) return;
 			if (joystickState == State.Un_Interactable) return;
-			if (_isDragging) return; // Prevent secondary touch hijacking
+
+			// Direct hardware touch polling fallback (guarantees operation if EventSystem misses events)
+			if (Input.touchCount > 0)
+			{
+				for (int i = 0; i < Input.touchCount; i++)
+				{
+					Touch t = Input.GetTouch(i);
+					if (!_isDragging)
+					{
+						// Left 45% of screen initiates joystick touch
+						if (t.phase == TouchPhase.Began && t.position.x < Screen.width * 0.45f)
+						{
+							StartTouch(t.position, t.fingerId, null);
+							break;
+						}
+					}
+					else if (t.fingerId == _activePointerId)
+					{
+						if (t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary)
+						{
+							UpdateDrag(t.position, null);
+						}
+						else if (t.phase == TouchPhase.Ended || t.phase == TouchPhase.Canceled)
+						{
+							ResetJoystick();
+						}
+						break;
+					}
+				}
+			}
+			else if (_isDragging && _activePointerId >= 0)
+			{
+				// No touches on screen, ensure reset
+				ResetJoystick();
+			}
+		}
+
+		public void OnPointerDown(PointerEventData eventData)
+		{
+			if (_isDragging && _activePointerId == eventData.pointerId) return;
+			StartTouch(eventData.position, eventData.pointerId, eventData.pressEventCamera);
+		}
+
+		public void OnDrag(PointerEventData eventData)
+		{
+			if (!_isDragging || eventData.pointerId != _activePointerId) return;
+			UpdateDrag(eventData.position, eventData.pressEventCamera);
+		}
+
+		public void OnPointerUp(PointerEventData eventData)
+		{
+			if (!_isDragging || eventData.pointerId != _activePointerId) return;
+			ResetJoystick();
+		}
+
+		private void StartTouch(Vector2 screenPos, int pointerId, Camera eventCamera)
+		{
+			if (ControllerManager.editMode) return;
+			if (joystickState == State.Un_Interactable) return;
+			if (_isDragging && _activePointerId != pointerId) return; // Prevent secondary touch hijacking
 
 			_isDragging = true;
-			_activePointerId = eventData.pointerId;
+			_activePointerId = pointerId;
 
 			SetJoystickColor(pressedColor);
 
@@ -79,13 +157,13 @@ namespace Keyneed.MobileController
 			if (joystickBackground != null)
 			{
 				if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-					_parentRect, eventData.position, eventData.pressEventCamera, out Vector2 localPointInParent))
+					_parentRect, screenPos, eventCamera, out Vector2 localPointInParent))
 				{
 					joystickBackground.anchoredPosition = localPointInParent;
 				}
 				else
 				{
-					joystickBackground.position = (Vector3)eventData.position;
+					joystickBackground.position = (Vector3)screenPos;
 				}
 			}
 
@@ -98,11 +176,9 @@ namespace Keyneed.MobileController
 			onPressedJoystick?.Invoke();
 		}
 
-		public void OnDrag(PointerEventData eventData)
+		private void UpdateDrag(Vector2 screenPos, Camera eventCamera)
 		{
-			if (ControllerManager.editMode) return;
-			if (joystickState == State.Un_Interactable) return;
-			if (!_isDragging || eventData.pointerId != _activePointerId) return;
+			if (!_isDragging) return;
 
 			onStartedDraggingJoystick?.Invoke();
 
@@ -110,7 +186,7 @@ namespace Keyneed.MobileController
 			{
 				// Compute deflection in the background's local coordinate space (Darrell4/touch-input BaseJoystick)
 				if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
-					joystickBackground, eventData.position, eventData.pressEventCamera, out Vector2 localPointInBg))
+					joystickBackground, screenPos, eventCamera, out Vector2 localPointInBg))
 				{
 					float radius = joystickBackground.rect.width * 0.5f;
 					if (radius <= 0f) radius = 125f;
@@ -134,9 +210,9 @@ namespace Keyneed.MobileController
 			}
 		}
 
-		public void OnPointerUp(PointerEventData eventData)
+		private void ResetJoystick()
 		{
-			if (!_isDragging || eventData.pointerId != _activePointerId) return;
+			if (!_isDragging) return;
 
 			_isDragging = false;
 			_activePointerId = -1;
