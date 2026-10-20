@@ -54,7 +54,7 @@ namespace Keyneed.MobileController
 			// 1. Root Canvas
 			Canvas canvas = gameObject.AddComponent<Canvas>();
 			canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-			canvas.sortingOrder = 3000;
+			canvas.sortingOrder = 30000;
 
 			CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
 			scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -94,9 +94,9 @@ namespace Keyneed.MobileController
 			FloatingJoyStick floatingJoy = joyZoneGo.AddComponent<FloatingJoyStick>();
 			floatingJoy.joystickBackground = joyBgGo.GetComponent<RectTransform>();
 			floatingJoy.joyStick = joyHandleGo.GetComponent<RectTransform>();
-			floatingJoy.joystickMovementRange = 75f;
+			floatingJoy.joystickMovementRange = 1f;
 			floatingJoy.normalColor = hudColor;
-			floatingJoy.pressedColor = new Color(1f, 1f, 1f, 0.8f);
+			floatingJoy.pressedColor = new Color(1f, 1f, 1f, 1f);
 
 			CanvasGroup joyCg = joyZoneGo.AddComponent<CanvasGroup>();
 			Patterns joyPat = joyZoneGo.AddComponent<Patterns>();

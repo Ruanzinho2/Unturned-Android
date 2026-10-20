@@ -1,24 +1,26 @@
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace Keyneed.MobileController
 {
 	/// <summary>
 	/// Virtual floating joystick for character and vehicle movement.
-	/// Injects movement directly into InputBroker and exposes continuous analog values.
+	/// Faithful 1:1 reproduction of the Russian Unturned mobile joystick implementation.
+	/// Uses screen-space relative touch drag mathematics and provides continuous analog values.
 	/// </summary>
 	public class FloatingJoyStick : Singleton<FloatingJoyStick>, IPointerDownHandler, IPointerUpHandler, IDragHandler
 	{
 		public RectTransform joystickBackground;
 		public RectTransform joyStick;
-		public float joystickMovementRange = 75f;
+		public float joystickMovementRange = 1f;
 		public Vector2 joyStickInput = Vector2.zero;
 		public Vector2 joystickCurrentPosition = Vector2.zero;
 
 		public Color normalColor = new Color(1f, 1f, 1f, 0.39215686f);
-		public Color pressedColor = new Color(1f, 1f, 1f, 0.8f);
+		public Color pressedColor = new Color(1f, 1f, 1f, 1f);
 		public State joystickState = State.Interactable;
 
 		public UnityEvent onGameStart = new UnityEvent();
@@ -27,15 +29,13 @@ namespace Keyneed.MobileController
 		public UnityEvent onStoppedDraggingJoystick = new UnityEvent();
 		private string _sceneNameTemp;
 
-		private Canvas m_Canvas;
 		private Vector2 m_InitialBackgroundPos;
 		private Image m_BackgroundImage;
 		private Image m_HandleImage;
-		private bool wasAutoSprinting = false;
 
 		private void Start()
 		{
-			m_Canvas = GetComponentInParent<Canvas>();
+			onGameStart?.Invoke();
 
 			if (joystickBackground != null)
 			{
@@ -48,118 +48,84 @@ namespace Keyneed.MobileController
 			}
 
 			SetJoystickColor(normalColor);
-			onGameStart?.Invoke();
+
+			_sceneNameTemp = SceneManager.GetActiveScene().name;
+			if (string.Equals(_sceneNameTemp, "Menu"))
+			{
+				gameObject.SetActive(false);
+			}
 		}
 
 		public void OnPointerDown(PointerEventData eventData)
 		{
-			if (joystickState == State.Un_Interactable) return;
 			if (ControllerManager.editMode) return;
+			if (joystickState == State.Un_Interactable) return;
 
-			onPressedJoystick?.Invoke();
 			SetJoystickColor(pressedColor);
 
-			// Floating positioning on touch down
+			// Authentic Russian APK floating behavior:
+			// Record the screen-space touch origin and center the background under the finger
+			joystickCurrentPosition = eventData.position;
+
 			if (joystickBackground != null)
 			{
-				RectTransform parentRt = joystickBackground.parent as RectTransform;
-				if (parentRt != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRt, eventData.position, null, out Vector2 localPoint))
-				{
-					joystickBackground.anchoredPosition = localPoint;
-				}
+				joystickBackground.position = eventData.position;
+			}
+			if (joyStick != null)
+			{
+				joyStick.anchoredPosition = Vector2.zero;
 			}
 
 			OnDrag(eventData);
+			onPressedJoystick?.Invoke();
 		}
 
 		public void OnDrag(PointerEventData eventData)
 		{
-			if (joystickState == State.Un_Interactable) return;
 			if (ControllerManager.editMode) return;
+			if (joystickState == State.Un_Interactable) return;
 
 			onStartedDraggingJoystick?.Invoke();
 
-			if (joystickBackground != null && joyStick != null)
+			// Authentic Russian APK vector math in screen space:
+			Vector2 diff = eventData.position - joystickCurrentPosition;
+			float mag = diff.magnitude;
+			float radius = (joystickBackground != null) ? (joystickBackground.sizeDelta.x * 0.5f) : 125f;
+
+			if (mag > radius)
 			{
-				if (RectTransformUtility.ScreenPointToLocalPointInRectangle(joystickBackground, eventData.position, null, out Vector2 localPoint))
-				{
-					float distance = Mathf.Clamp(localPoint.magnitude, 0f, joystickMovementRange);
-					Vector2 direction = localPoint.normalized;
-					joyStick.anchoredPosition = direction * distance;
-					joyStickInput = joyStick.anchoredPosition / (joystickMovementRange > 0f ? joystickMovementRange : 1f);
-					joystickCurrentPosition = joyStick.anchoredPosition;
+				joyStickInput = diff.normalized;
+			}
+			else
+			{
+				joyStickInput = (radius > 0f) ? (diff / radius) : Vector2.zero;
+			}
 
-					// Direct movement key injection via InputBroker
-					if (joyStickInput.x < -0.2f)
-					{
-						SDG.Unturned.InputBroker.SetKeyDown(SDG.Unturned.ControlsSettings.left);
-						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.right);
-					}
-					else if (joyStickInput.x > 0.2f)
-					{
-						SDG.Unturned.InputBroker.SetKeyDown(SDG.Unturned.ControlsSettings.right);
-						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.left);
-					}
-					else
-					{
-						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.left);
-						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.right);
-					}
-
-					if (joyStickInput.y > 0.2f)
-					{
-						SDG.Unturned.InputBroker.SetKeyDown(SDG.Unturned.ControlsSettings.up);
-						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.down);
-					}
-					else if (joyStickInput.y < -0.2f)
-					{
-						SDG.Unturned.InputBroker.SetKeyDown(SDG.Unturned.ControlsSettings.down);
-						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.up);
-					}
-					else
-					{
-						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.up);
-						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.down);
-					}
-
-					if (joyStickInput.y > 0.85f)
-					{
-						wasAutoSprinting = true;
-						SDG.Unturned.InputBroker.SetKeyDown(SDG.Unturned.ControlsSettings.sprint);
-					}
-					else if (wasAutoSprinting)
-					{
-						wasAutoSprinting = false;
-						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.sprint);
-					}
-				}
+			if (joyStick != null && joystickBackground != null)
+			{
+				float range = (joystickMovementRange != 0f) ? joystickMovementRange : 1f;
+				joyStick.anchoredPosition = (joyStickInput * (joystickBackground.sizeDelta / 2f)) * range;
 			}
 		}
 
 		public void OnPointerUp(PointerEventData eventData)
 		{
+			if (ControllerManager.editMode) return;
 			if (joystickState == State.Un_Interactable) return;
 
-			onStoppedDraggingJoystick?.Invoke();
 			SetJoystickColor(normalColor);
+			joyStickInput = Vector2.zero;
 
-			if (wasAutoSprinting)
+			if (joyStick != null)
 			{
-				wasAutoSprinting = false;
-				SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.sprint);
+				joyStick.anchoredPosition = Vector2.zero;
+			}
+			if (joystickBackground != null)
+			{
+				joystickBackground.anchoredPosition = m_InitialBackgroundPos;
 			}
 
-			// Release all simulated movement keys
-			SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.left);
-			SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.right);
-			SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.up);
-			SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.down);
-
-			if (joyStick != null) joyStick.anchoredPosition = Vector2.zero;
-			if (joystickBackground != null) joystickBackground.anchoredPosition = m_InitialBackgroundPos;
-
-			joyStickInput = Vector2.zero;
-			joystickCurrentPosition = Vector2.zero;
+			onStoppedDraggingJoystick?.Invoke();
 		}
 
 		public void SetJoystickColor(Color color)

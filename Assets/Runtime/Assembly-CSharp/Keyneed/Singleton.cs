@@ -16,6 +16,14 @@ namespace Keyneed
 				if (m_Instance == null)
 				{
 					m_Instance = FindObjectOfType<T>();
+					if (m_Instance == null)
+					{
+						T[] all = Resources.FindObjectsOfTypeAll<T>();
+						if (all != null && all.Length > 0)
+						{
+							m_Instance = all[0];
+						}
+					}
 				}
 				return m_Instance;
 			}

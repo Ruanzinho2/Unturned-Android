@@ -11,12 +11,49 @@ namespace SDG.Unturned
 	/// </summary>
 	public static class InputEx
 	{
+		private static bool IsPhysicalKeyPressed(KeyCode key)
+		{
+#if UNITY_ANDROID
+			// On Android touchscreen devices, any touch emulates Mouse0/Mouse1 in legacy Input.
+			// When the screen is being touched (touchCount > 0), ignore touch-emulated mouse clicks
+			// so that touching the joystick or screen does not trigger attacking/aiming.
+			// Real physical mice (USB/Bluetooth) do not produce Input.touchCount > 0.
+			if ((key == KeyCode.Mouse0 || key == KeyCode.Mouse1) && Input.touchCount > 0)
+			{
+				return false;
+			}
+#endif
+			return Input.GetKey(key);
+		}
+
+		private static bool IsPhysicalKeyDown(KeyCode key)
+		{
+#if UNITY_ANDROID
+			if ((key == KeyCode.Mouse0 || key == KeyCode.Mouse1) && Input.touchCount > 0)
+			{
+				return false;
+			}
+#endif
+			return Input.GetKeyDown(key);
+		}
+
+		private static bool IsPhysicalKeyUp(KeyCode key)
+		{
+#if UNITY_ANDROID
+			if ((key == KeyCode.Mouse0 || key == KeyCode.Mouse1) && Input.touchCount > 0)
+			{
+				return false;
+			}
+#endif
+			return Input.GetKeyUp(key);
+		}
+
 		/// <summary>
 		/// Wrapper for Input.GetKey, but returns false while typing in a uGUI text field.
 		/// </summary>
 		public static bool GetKey(KeyCode key)
 		{
-			return (Input.GetKey(key) || InputBroker.GetKey(key)) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
+			return (IsPhysicalKeyPressed(key) || InputBroker.GetKey(key)) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
 		}
 
 		/// <summary>
@@ -24,7 +61,7 @@ namespace SDG.Unturned
 		/// </summary>
 		public static bool GetKeyDown(KeyCode key)
 		{
-			return (Input.GetKeyDown(key) || InputBroker.GetKeyDown(key)) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
+			return (IsPhysicalKeyDown(key) || InputBroker.GetKeyDown(key)) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
 		}
 
 		/// <summary>
@@ -32,7 +69,7 @@ namespace SDG.Unturned
 		/// </summary>
 		public static bool GetKeyUp(KeyCode key)
 		{
-			return (Input.GetKeyUp(key) || InputBroker.GetKeyUp(key)) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
+			return (IsPhysicalKeyUp(key) || InputBroker.GetKeyUp(key)) && !MenuConfigurationControlsUI.ShouldGameIgnoreInput && Glazier.Get().ShouldGameProcessKeyDown;
 		}
 
 		/// <summary>
