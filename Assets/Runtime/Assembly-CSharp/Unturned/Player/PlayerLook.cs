@@ -1453,8 +1453,8 @@ namespace SDG.Unturned
 
 							if (isTouchLookActive || (Application.isMobilePlatform && (Mathf.Abs(hMobile) > 0.0001f || Mathf.Abs(vMobile) > 0.0001f)))
 							{
-								_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile * (float)warp_x;
-								_orbitPitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile * (float)warp_y;
+								_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile;
+								_orbitPitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile;
 							}
 							else if (PlayerUI.window.isCursorLocked || !Application.isMobilePlatform)
 							{
@@ -1513,26 +1513,26 @@ namespace SDG.Unturned
 						{
 							if (perspective == EPlayerPerspective.FIRST || isTracking || isLocking || isFocusing)
 							{
-								_look_x = ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile * (float)warp_x;
-								_look_y = ControlsSettings.mouseAimSensitivity * zoomSensitivity * vMobile * (float)warp_y;
+								_look_x = ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile;
+								_look_y = ControlsSettings.mouseAimSensitivity * zoomSensitivity * vMobile;
 							}
 
 							if (player.movement.getVehicle() != null && perspective == EPlayerPerspective.THIRD)
 							{
-								_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile * (float)warp_x;
+								_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile;
 								_orbitYaw = orbitYaw % 360.0f;
-								_orbitPitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile * (float)warp_y;
+								_orbitPitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile;
 							}
 							else
 							{
 								if (player.movement.getVehicle() == null || !player.movement.getVehicle().asset.hasLockMouse || !player.movement.getVehicle().isDriver)
 								{
-									_yaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile * (float)warp_x;
+									_yaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile;
 								}
 
 								if (player.movement.getVehicle() == null || !player.movement.getVehicle().asset.hasLockMouse || !player.movement.getVehicle().isDriver)
 								{
-									_pitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile * (float)warp_y;
+									_pitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile;
 								}
 							}
 						}
