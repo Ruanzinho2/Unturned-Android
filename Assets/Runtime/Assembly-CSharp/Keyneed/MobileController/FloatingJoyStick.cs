@@ -33,10 +33,13 @@ namespace Keyneed.MobileController
 		private Image m_HandleImage;
 		private int _activePointerId = -1;
 		private bool _isDragging = false;
+		private RectTransform _parentRect;
 
 		private void Start()
 		{
 			onGameStart?.Invoke();
+
+			_parentRect = transform as RectTransform;
 
 			if (joystickBackground != null)
 			{
@@ -67,17 +70,31 @@ namespace Keyneed.MobileController
 
 			SetJoystickColor(pressedColor);
 
-			joystickCurrentPosition = eventData.position;
+			if (_parentRect == null)
+			{
+				_parentRect = transform as RectTransform;
+			}
+
+			// Position the background where the touch occurred within the parent touch zone
 			if (joystickBackground != null)
 			{
-				joystickBackground.position = (Vector3)eventData.position;
+				if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+					_parentRect, eventData.position, eventData.pressEventCamera, out Vector2 localPointInParent))
+				{
+					joystickBackground.anchoredPosition = localPointInParent;
+				}
+				else
+				{
+					joystickBackground.position = (Vector3)eventData.position;
+				}
 			}
+
 			if (joyStick != null)
 			{
 				joyStick.anchoredPosition = Vector2.zero;
 			}
 
-			OnDrag(eventData);
+			joyStickInput = Vector2.zero;
 			onPressedJoystick?.Invoke();
 		}
 
@@ -89,29 +106,36 @@ namespace Keyneed.MobileController
 
 			onStartedDraggingJoystick?.Invoke();
 
-			Vector2 diff = eventData.position - joystickCurrentPosition;
-			float radius = (joystickBackground != null) ? (joystickBackground.sizeDelta.x * 0.5f) : 125f;
+			if (joystickBackground != null)
+			{
+				// Compute deflection in the background's local coordinate space (Darrell4/touch-input BaseJoystick)
+				if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+					joystickBackground, eventData.position, eventData.pressEventCamera, out Vector2 localPointInBg))
+				{
+					float radius = joystickBackground.rect.width * 0.5f;
+					if (radius <= 0f) radius = 125f;
 
-			if (diff.magnitude > radius)
-			{
-				joyStickInput = diff.normalized;
-			}
-			else
-			{
-				joyStickInput = (radius > 0f) ? (diff / radius) : Vector2.zero;
-			}
+					Vector2 normalized = localPointInBg / radius;
+					if (normalized.magnitude > 0.05f)
+					{
+						joyStickInput = Vector2.ClampMagnitude(normalized, 1f);
+					}
+					else
+					{
+						joyStickInput = Vector2.zero;
+					}
 
-			if (joyStick != null && joystickBackground != null)
-			{
-				float range = (joystickMovementRange != 0f) ? joystickMovementRange : 1f;
-				joyStick.anchoredPosition = (joyStickInput * (joystickBackground.sizeDelta.x * 0.5f)) * range;
+					if (joyStick != null)
+					{
+						float range = (joystickMovementRange != 0f) ? joystickMovementRange : 1f;
+						joyStick.anchoredPosition = joyStickInput * (radius * range);
+					}
+				}
 			}
 		}
 
 		public void OnPointerUp(PointerEventData eventData)
 		{
-			if (ControllerManager.editMode) return;
-			if (joystickState == State.Un_Interactable) return;
 			if (!_isDragging || eventData.pointerId != _activePointerId) return;
 
 			_isDragging = false;

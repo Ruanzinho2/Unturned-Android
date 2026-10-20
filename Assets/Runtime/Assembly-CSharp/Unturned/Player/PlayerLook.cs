@@ -1447,16 +1447,24 @@ namespace SDG.Unturned
 									break;
 							}
 
-							float hMobile = UltimateTouchpad.GetHorizontalAxis("LookTouchPad_8tdg5543ffre");
-							float vMobile = UltimateTouchpad.GetVerticalAxis("LookTouchPad_8tdg5543ffre");
+							Vector2 lookDelta = UltimateTouchpad.ConsumeTouchDelta("LookTouchPad_8tdg5543ffre");
 							bool isTouchLookActive = UltimateTouchpad.GetTouchpadState("LookTouchPad_8tdg5543ffre");
+							bool isMobileLook = isTouchLookActive || lookDelta.sqrMagnitude > 0.0001f;
 
-							if (isTouchLookActive || (Application.isMobilePlatform && (Mathf.Abs(hMobile) > 0.0001f || Mathf.Abs(vMobile) > 0.0001f)))
+							if (isMobileLook)
 							{
-								_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile;
-								_orbitPitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile;
+								float rotScale = 0.8f * ControlsSettings.mouseAimSensitivity * zoomSensitivity;
+								_orbitYaw += lookDelta.x * rotScale;
+								if (ControlsSettings.invert)
+								{
+									_orbitPitch += lookDelta.y * rotScale;
+								}
+								else
+								{
+									_orbitPitch -= lookDelta.y * rotScale;
+								}
 							}
-							else if (PlayerUI.window.isCursorLocked || !Application.isMobilePlatform)
+							else if (PlayerUI.window.isCursorLocked || !Application.isMobilePlatform || Input.touchCount == 0)
 							{
 								_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
 
@@ -1504,39 +1512,56 @@ namespace SDG.Unturned
 								break;
 						}
 
-						float hMobile = UltimateTouchpad.GetHorizontalAxis("LookTouchPad_8tdg5543ffre");
-						float vMobile = UltimateTouchpad.GetVerticalAxis("LookTouchPad_8tdg5543ffre");
+						Vector2 lookDelta = UltimateTouchpad.ConsumeTouchDelta("LookTouchPad_8tdg5543ffre");
 						bool isTouchLookActive = UltimateTouchpad.GetTouchpadState("LookTouchPad_8tdg5543ffre");
-						bool isMobileLook = isTouchLookActive || (Application.isMobilePlatform && (Mathf.Abs(hMobile) > 0.0001f || Mathf.Abs(vMobile) > 0.0001f));
+						bool isMobileLook = isTouchLookActive || lookDelta.sqrMagnitude > 0.0001f;
 
 						if (isMobileLook)
 						{
+							float rotScale = 0.8f * ControlsSettings.mouseAimSensitivity * zoomSensitivity;
+							float deltaYaw = lookDelta.x * rotScale;
+							float deltaPitch = lookDelta.y * rotScale;
+
 							if (perspective == EPlayerPerspective.FIRST || isTracking || isLocking || isFocusing)
 							{
-								_look_x = ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile;
-								_look_y = ControlsSettings.mouseAimSensitivity * zoomSensitivity * vMobile;
+								_look_x = deltaYaw;
+								_look_y = ControlsSettings.invert ? deltaPitch : -deltaPitch;
 							}
 
 							if (player.movement.getVehicle() != null && perspective == EPlayerPerspective.THIRD)
 							{
-								_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile;
+								_orbitYaw += deltaYaw;
 								_orbitYaw = orbitYaw % 360.0f;
-								_orbitPitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile;
+								if (ControlsSettings.invert)
+								{
+									_orbitPitch += deltaPitch;
+								}
+								else
+								{
+									_orbitPitch -= deltaPitch;
+								}
 							}
 							else
 							{
 								if (player.movement.getVehicle() == null || !player.movement.getVehicle().asset.hasLockMouse || !player.movement.getVehicle().isDriver)
 								{
-									_yaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile;
+									_yaw += deltaYaw;
 								}
 
 								if (player.movement.getVehicle() == null || !player.movement.getVehicle().asset.hasLockMouse || !player.movement.getVehicle().isDriver)
 								{
-									_pitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile;
+									if (ControlsSettings.invert)
+									{
+										_pitch += deltaPitch;
+									}
+									else
+									{
+										_pitch -= deltaPitch;
+									}
 								}
 							}
 						}
-						else if (PlayerUI.window.isCursorLocked || !Application.isMobilePlatform)
+						else if (PlayerUI.window.isCursorLocked || !Application.isMobilePlatform || Input.touchCount == 0)
 						{
 							if (perspective == EPlayerPerspective.FIRST || isTracking || isLocking || isFocusing)
 							{

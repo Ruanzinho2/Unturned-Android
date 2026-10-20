@@ -68,16 +68,16 @@ namespace Keyneed.MobileController
 
 			Color hudColor = new Color(1f, 1f, 1f, 0.39215686f);
 
-			// 2. Child 00: Joystick Touch Pad
+			// 2. Child 00: Joystick Touch Pad (covers left 40% of screen)
 			GameObject joyZoneGo = CreateUIElement("Joystick Touch Pad", transform,
-				new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(480.01f, 264.97f), new Vector2(959.99f, 530f), new Vector2(0.5f, 0.5f));
+				new Vector2(0f, 0f), new Vector2(0.4f, 1f), Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
 			Image joyZoneImg = joyZoneGo.AddComponent<Image>();
 			joyZoneImg.color = Color.clear;
 			joyZoneImg.raycastTarget = true;
 
 			// Joystick Background
 			GameObject joyBgGo = CreateUIElement("Joystick Background", joyZoneGo.transform,
-				new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(250f, 250f), new Vector2(0.5f, 0.5f));
+				new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -150f), new Vector2(250f, 250f), new Vector2(0.5f, 0.5f));
 			Image joyBgImg = joyBgGo.AddComponent<Image>();
 			joyBgImg.sprite = MobileSpriteProvider.GetSprite("lineLight09");
 			joyBgImg.color = hudColor;
@@ -103,9 +103,9 @@ namespace Keyneed.MobileController
 			joyPat.m_ButtonPattern = ButtonPattern.None;
 			joyPat.m_CanvasGroup = joyCg;
 
-			// 3. Child 01: LookTouchPad_8tdg5543ffre
+			// 3. Child 01: LookTouchPad_8tdg5543ffre (covers right 60% of screen)
 			GameObject lookZoneGo = CreateUIElement("LookTouchPad_8tdg5543ffre", transform,
-				new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(1548.42f, 502.19f), new Vector2(1032.28f, 1004.38f), new Vector2(0.5f, 0.5f));
+				new Vector2(0.4f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
 			Image lookImg = lookZoneGo.AddComponent<Image>();
 			lookImg.color = Color.clear;
 			lookImg.raycastTarget = true;

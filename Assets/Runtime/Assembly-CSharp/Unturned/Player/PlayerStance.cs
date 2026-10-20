@@ -850,7 +850,8 @@ namespace SDG.Unturned
 					}
 					else
 					{
-						_localWantsToSprint = InputEx.GetKey(ControlsSettings.sprint);
+						bool joySprint = Keyneed.MobileController.FloatingJoyStick.Instance != null && Keyneed.MobileController.FloatingJoyStick.Instance.GetVerticalValue() > 0.85f;
+						_localWantsToSprint = InputEx.GetKey(ControlsSettings.sprint) || joySprint;
 					}
 
 					localWantsToSteadyAim = InputEx.GetKey(ControlsSettings.sprint);

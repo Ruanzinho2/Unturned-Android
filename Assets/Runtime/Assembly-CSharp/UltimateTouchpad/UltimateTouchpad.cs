@@ -25,6 +25,8 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IEventSystem
 	public Vector2 previousPosition = Vector2.zero;
 	public Vector2 currentPosition = Vector2.zero;
 
+	private Vector2 _accumulatedDelta = Vector2.zero;
+
 	public float horizontalValue = 0f;
 	public float verticalValue = 0f;
 
@@ -136,8 +138,7 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IEventSystem
 	public void OnDrag(PointerEventData touchInfo)
 	{
 		if (useTouchInput) return;
-		if (_inputId != touchInfo.pointerId) return;
-		currentPosition = touchInfo.position;
+		ProcessOnInputMoved(touchInfo.position, touchInfo.pointerId);
 	}
 
 	public void OnPointerUp(PointerEventData touchInfo)
@@ -154,59 +155,56 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IEventSystem
 		_inputId = inputId;
 		currentPosition = inputPosition;
 		previousPosition = inputPosition;
-
-		StartCoroutine("ProcessInput");
-	}
-
-	private void ProcessOnInputMoved(Vector2 inputPosition, int inputId)
-	{
-		if (_inputId != inputId) return;
-		currentPosition = inputPosition;
-	}
-
-	private void ProcessOnInputUp(Vector2 inputPosition, int inputId)
-	{
-		if (_inputId != inputId) return;
-
-		inputActive = false;
-		_inputId = -10;
+		_accumulatedDelta = Vector2.zero;
 		horizontalValue = 0f;
 		verticalValue = 0f;
 	}
 
-	private IEnumerator ProcessInput()
+	private void ProcessOnInputMoved(Vector2 inputPosition, int inputId)
 	{
-		while (inputActive)
-		{
-			UpdateTouchPad();
-			yield return null;
-		}
+		if (!inputActive || _inputId != inputId) return;
+
+		Vector2 diff = inputPosition - previousPosition;
+		_accumulatedDelta += diff;
+		previousPosition = inputPosition;
+		currentPosition = inputPosition;
+
+		horizontalValue = _accumulatedDelta.x;
+		verticalValue = _accumulatedDelta.y;
 	}
 
-	private void UpdateTouchPad()
+	private void ProcessOnInputUp(Vector2 inputPosition, int inputId)
 	{
-		Vector2 diff = currentPosition - previousPosition;
-		if (ParentCanvas != null && ParentCanvas.scaleFactor > 0f)
+		if (!inputActive || _inputId != inputId) return;
+
+		inputActive = false;
+		_inputId = -10;
+		_accumulatedDelta = Vector2.zero;
+		horizontalValue = 0f;
+		verticalValue = 0f;
+	}
+
+	public Vector2 ConsumeDelta()
+	{
+		Vector2 delta = _accumulatedDelta;
+		_accumulatedDelta = Vector2.zero;
+		return delta;
+	}
+
+	public static Vector2 ConsumeTouchDelta(string name)
+	{
+		if (UltimateTouchpads.TryGetValue(name, out UltimateTouchpad touchpad))
 		{
-			diff /= ParentCanvas.scaleFactor;
+			return touchpad.ConsumeDelta();
 		}
-
-		float w = (screenWidth > 0f) ? screenWidth : 1920f;
-		float h = (screenHeight > 0f) ? screenHeight : 1080f;
-
-		float targetH = (diff.x / w) * _xSensitivity;
-		float targetV = (diff.y / h) * _ySensitivity;
-
-		horizontalValue = Mathf.Lerp(horizontalValue, targetH, xGravity);
-		verticalValue = Mathf.Lerp(verticalValue, targetV, yGravity);
-
-		previousPosition = currentPosition;
+		return Vector2.zero;
 	}
 
 	public void ResetTouchpad()
 	{
 		inputActive = false;
 		_inputId = -10;
+		_accumulatedDelta = Vector2.zero;
 		horizontalValue = 0f;
 		verticalValue = 0f;
 		previousPosition = currentPosition;
