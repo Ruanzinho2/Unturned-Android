@@ -1714,6 +1714,8 @@ namespace SDG.Unturned
 			_interact = GetComponent<PlayerInteract>();
 			_workzone = GetComponent<PlayerWorkzone>();
 			_quests = GetComponent<PlayerQuests>();
+
+			Keyneed.MobileController.RussianHUDBuilder.EnsureHUDExists();
 		}
 
 		/// <summary>

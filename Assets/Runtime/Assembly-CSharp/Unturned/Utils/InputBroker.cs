@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using SDG.Unturned.Mobile;
 
 namespace SDG.Unturned
 {
@@ -12,6 +11,7 @@ namespace SDG.Unturned
 	/// </summary>
 	public static class InputBroker
 	{
+		public static bool isSimulation = false;
 		public static bool isSimulatingMouse = false;
 
 		private static readonly HashSet<KeyCode> keysDown = new HashSet<KeyCode>();
@@ -24,12 +24,12 @@ namespace SDG.Unturned
 		{
 			if (axisName == "mouse_x")
 			{
-				float simulated = SpecialTouchPad.Instance != null ? SpecialTouchPad.Instance.touchPadInput.x : 0f;
+				float simulated = UltimateTouchpad.GetHorizontalAxis("LookTouchPad_8tdg5543ffre");
 				return Input.GetAxis("mouse_x") + simulated;
 			}
 			if (axisName == "mouse_y")
 			{
-				float simulated = SpecialTouchPad.Instance != null ? SpecialTouchPad.Instance.touchPadInput.y : 0f;
+				float simulated = UltimateTouchpad.GetVerticalAxis("LookTouchPad_8tdg5543ffre");
 				return Input.GetAxis("mouse_y") + simulated;
 			}
 			return Input.GetAxis(axisName);
@@ -37,19 +37,13 @@ namespace SDG.Unturned
 
 		public static Vector3 mousePosition
 		{
-			get => isSimulatingMouse ? _mousePosition : Input.mousePosition;
+			get => (isSimulation || isSimulatingMouse) ? _mousePosition : Input.mousePosition;
 			set
 			{
 				_mousePosition = value;
 				isSimulatingMouse = true;
+				isSimulation = true;
 			}
-		}
-
-		// Backward compatibility property
-		public static bool isSimulation
-		{
-			get => isSimulatingMouse;
-			set => isSimulatingMouse = value;
 		}
 
 		public static void SetKeyDown(KeyCode key)
@@ -62,6 +56,11 @@ namespace SDG.Unturned
 			}
 		}
 
+		public static void SetKey(KeyCode key)
+		{
+			SetKeyDown(key);
+		}
+
 		public static void SetKeyUp(KeyCode key)
 		{
 			if (key == KeyCode.None) return;
@@ -70,6 +69,13 @@ namespace SDG.Unturned
 				keysPressed.Remove(key);
 				keysUp.Add(key);
 			}
+		}
+
+		public static void DeleteKey(KeyCode key)
+		{
+			keysPressed.Remove(key);
+			keysDown.Remove(key);
+			keysUp.Remove(key);
 		}
 
 		public static void ClickKey(KeyCode key)
@@ -101,6 +107,9 @@ namespace SDG.Unturned
 		{
 			return keysUp.Contains(key);
 		}
+
+		public static bool anyKey => keysPressed.Count > 0 || Input.anyKey;
+		public static bool anyKeyDown => keysDown.Count > 0 || Input.anyKeyDown;
 
 		public static void ClearFrameDeltas()
 		{

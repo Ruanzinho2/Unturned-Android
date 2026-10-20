@@ -1547,6 +1547,10 @@ namespace SDG.Unturned
 						{
 							input_x = 1;
 						}
+						else if (Keyneed.MobileController.FloatingJoyStick.Instance != null && Mathf.Abs(Keyneed.MobileController.FloatingJoyStick.Instance.GetHorizontalValue()) > 0.2f)
+						{
+							input_x = Keyneed.MobileController.FloatingJoyStick.Instance.GetHorizontalValue() > 0 ? 1 : -1;
+						}
 						else
 						{
 							input_x = 0;
@@ -1559,6 +1563,10 @@ namespace SDG.Unturned
 						else if (InputEx.GetKey(ControlsSettings.thrustDecrease))
 						{
 							input_y = -1;
+						}
+						else if (Keyneed.MobileController.FloatingJoyStick.Instance != null && Mathf.Abs(Keyneed.MobileController.FloatingJoyStick.Instance.GetVerticalValue()) > 0.2f)
+						{
+							input_y = Keyneed.MobileController.FloatingJoyStick.Instance.GetVerticalValue() > 0 ? 1 : -1;
 						}
 						else
 						{
@@ -1575,6 +1583,10 @@ namespace SDG.Unturned
 						{
 							input_x = 1;
 						}
+						else if (Keyneed.MobileController.FloatingJoyStick.Instance != null && Mathf.Abs(Keyneed.MobileController.FloatingJoyStick.Instance.GetHorizontalValue()) > 0.2f)
+						{
+							input_x = Keyneed.MobileController.FloatingJoyStick.Instance.GetHorizontalValue() > 0 ? 1 : -1;
+						}
 						else
 						{
 							input_x = 0;
@@ -1587,6 +1599,10 @@ namespace SDG.Unturned
 						else if (InputEx.GetKey(ControlsSettings.down))
 						{
 							input_y = -1;
+						}
+						else if (Keyneed.MobileController.FloatingJoyStick.Instance != null && Mathf.Abs(Keyneed.MobileController.FloatingJoyStick.Instance.GetVerticalValue()) > 0.2f)
+						{
+							input_y = Keyneed.MobileController.FloatingJoyStick.Instance.GetVerticalValue() > 0 ? 1 : -1;
 						}
 						else
 						{
