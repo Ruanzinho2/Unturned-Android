@@ -5,6 +5,7 @@ namespace SDG.Unturned.Mobile
 {
 	/// <summary>
 	/// Virtual floating joystick for character and vehicle movement.
+	/// Supports dynamic touch centering, auto-sprint threshold, and multi-touch isolation.
 	/// Feeds direction directly into Unturned's ControlsSettings keys via InputBroker.
 	/// </summary>
 	public class FloatingJoyStick : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
@@ -14,37 +15,63 @@ namespace SDG.Unturned.Mobile
 		public RectTransform joyStickHandle;
 
 		[Header("Settings")]
-		public float joystickMovementRange = 50f;
+		public float joystickMovementRange = 75f;
 		public float deadZone = 0.15f;
+		public bool isFloating = true;
+		public bool autoSprintEnabled = true;
+		public float autoSprintThreshold = 0.85f;
 
 		public Vector2 joystickInput { get; private set; }
 		public bool isDragging { get; private set; }
 
-		private Vector2 startPosition;
+		private int activePointerId = -1;
+		private Vector2 backgroundDefaultAnchoredPos;
+		private RectTransform touchZoneRect;
 
 		private KeyCode currentHorizontalKey = KeyCode.None;
 		private KeyCode currentVerticalKey = KeyCode.None;
+		private bool isAutoSprinting = false;
 
 		private void Awake()
 		{
-			if (joystickBackground == null)
+			touchZoneRect = GetComponent<RectTransform>();
+			if (joystickBackground != null)
 			{
-				joystickBackground = GetComponent<RectTransform>();
-			}
-			if (joyStickHandle != null)
-			{
-				startPosition = joyStickHandle.anchoredPosition;
+				backgroundDefaultAnchoredPos = joystickBackground.anchoredPosition;
 			}
 		}
 
 		public void OnPointerDown(PointerEventData eventData)
 		{
+			if (activePointerId != -1) return;
+
+			activePointerId = eventData.pointerId;
 			isDragging = true;
+
+			if (isFloating && joystickBackground != null && touchZoneRect != null)
+			{
+				Vector2 localPoint;
+				if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+					touchZoneRect,
+					eventData.position,
+					eventData.pressEventCamera,
+					out localPoint))
+				{
+					joystickBackground.anchoredPosition = localPoint;
+				}
+			}
+
+			if (joyStickHandle != null)
+			{
+				joyStickHandle.anchoredPosition = Vector2.zero;
+			}
+
 			OnDrag(eventData);
 		}
 
 		public void OnDrag(PointerEventData eventData)
 		{
+			if (eventData.pointerId != activePointerId) return;
 			if (joystickBackground == null || joyStickHandle == null) return;
 
 			Vector2 position;
@@ -66,12 +93,20 @@ namespace SDG.Unturned.Mobile
 
 		public void OnPointerUp(PointerEventData eventData)
 		{
+			if (eventData.pointerId != activePointerId) return;
+
+			activePointerId = -1;
 			isDragging = false;
 			joystickInput = Vector2.zero;
 
 			if (joyStickHandle != null)
 			{
-				joyStickHandle.anchoredPosition = startPosition;
+				joyStickHandle.anchoredPosition = Vector2.zero;
+			}
+
+			if (isFloating && joystickBackground != null)
+			{
+				joystickBackground.anchoredPosition = backgroundDefaultAnchoredPos;
 			}
 
 			ReleaseSimulatedKeys();
@@ -126,6 +161,24 @@ namespace SDG.Unturned.Mobile
 				}
 				currentVerticalKey = targetVertical;
 			}
+
+			// Auto-sprint check when pushed near full forward
+			if (autoSprintEnabled)
+			{
+				bool wantsAutoSprint = joystickInput.y > autoSprintThreshold && joystickInput.magnitude > autoSprintThreshold;
+				if (wantsAutoSprint != isAutoSprinting)
+				{
+					isAutoSprinting = wantsAutoSprint;
+					if (isAutoSprinting)
+					{
+						InputBroker.SetKeyDown(ControlsSettings.sprint);
+					}
+					else
+					{
+						InputBroker.SetKeyUp(ControlsSettings.sprint);
+					}
+				}
+			}
 		}
 
 		private void ReleaseSimulatedKeys()
@@ -140,12 +193,19 @@ namespace SDG.Unturned.Mobile
 				InputBroker.SetKeyUp(currentVerticalKey);
 				currentVerticalKey = KeyCode.None;
 			}
+			if (isAutoSprinting)
+			{
+				InputBroker.SetKeyUp(ControlsSettings.sprint);
+				isAutoSprinting = false;
+			}
 		}
 
 		private void OnDisable()
 		{
 			ReleaseSimulatedKeys();
+			activePointerId = -1;
 			isDragging = false;
+			joystickInput = Vector2.zero;
 		}
 	}
 }

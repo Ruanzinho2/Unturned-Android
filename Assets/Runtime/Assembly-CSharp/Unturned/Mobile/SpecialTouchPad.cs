@@ -5,7 +5,8 @@ namespace SDG.Unturned.Mobile
 {
 	/// <summary>
 	/// Virtual touchpad for camera and look rotation on mobile touchscreens.
-	/// Tracks finger delta on the right half of the screen and exposes look delta.
+	/// Tracks finger delta on the touchable screen area and exposes scaled look delta.
+	/// Cleanses frame delta at LateUpdate to prevent infinite camera spinning when stationary.
 	/// </summary>
 	public class SpecialTouchPad : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
 	{
@@ -15,11 +16,27 @@ namespace SDG.Unturned.Mobile
 		public float sensitivityX = 2.0f;
 		public float sensitivityY = 2.0f;
 
-		public Vector2 touchPadInput { get; private set; }
 		public bool pressingTouchPad { get; private set; }
 
 		private int eventPointerID = -1;
 		private Vector2 pointerOld;
+		private Vector2 currentFrameDelta;
+
+		public Vector2 touchPadInput
+		{
+			get
+			{
+				if (!pressingTouchPad || currentFrameDelta == Vector2.zero)
+				{
+					return Vector2.zero;
+				}
+
+				return new Vector2(
+					currentFrameDelta.x * sensitivityX * (1000f / Mathf.Max(Screen.width, 1)),
+					currentFrameDelta.y * sensitivityY * (1000f / Mathf.Max(Screen.height, 1))
+				);
+			}
+		}
 
 		private void Awake()
 		{
@@ -41,7 +58,7 @@ namespace SDG.Unturned.Mobile
 				eventPointerID = eventData.pointerId;
 				pointerOld = eventData.position;
 				pressingTouchPad = true;
-				touchPadInput = Vector2.zero;
+				currentFrameDelta = Vector2.zero;
 			}
 		}
 
@@ -52,12 +69,7 @@ namespace SDG.Unturned.Mobile
 				Vector2 currentPos = eventData.position;
 				Vector2 delta = currentPos - pointerOld;
 				pointerOld = currentPos;
-
-				// Calculate scaled look delta
-				touchPadInput = new Vector2(
-					delta.x * sensitivityX * (1000f / Mathf.Max(Screen.width, 1)),
-					delta.y * sensitivityY * (1000f / Mathf.Max(Screen.height, 1))
-				);
+				currentFrameDelta += delta;
 			}
 		}
 
@@ -67,24 +79,21 @@ namespace SDG.Unturned.Mobile
 			{
 				eventPointerID = -1;
 				pressingTouchPad = false;
-				touchPadInput = Vector2.zero;
+				currentFrameDelta = Vector2.zero;
 			}
 		}
 
 		private void LateUpdate()
 		{
-			// Reset instantaneous delta at the end of each frame
-			if (!pressingTouchPad)
-			{
-				touchPadInput = Vector2.zero;
-			}
+			// Reset frame delta after it has been sampled in Update() (e.g. by PlayerLook)
+			currentFrameDelta = Vector2.zero;
 		}
 
 		private void OnDisable()
 		{
 			eventPointerID = -1;
 			pressingTouchPad = false;
-			touchPadInput = Vector2.zero;
+			currentFrameDelta = Vector2.zero;
 		}
 	}
 }

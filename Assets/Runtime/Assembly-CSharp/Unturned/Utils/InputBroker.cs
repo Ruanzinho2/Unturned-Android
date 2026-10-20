@@ -8,10 +8,11 @@ namespace SDG.Unturned
 	/// Virtual input abstraction layer for mobile touch controls and simulation.
 	/// Enables simulated button presses, touches, and mouse coordinates to feed
 	/// transparently into Unturned's input system (InputEx, PlayerMovement, PlayerInput).
+	/// Works concurrently with physical keyboard and mouse without conflicts.
 	/// </summary>
 	public static class InputBroker
 	{
-		public static bool isSimulation = false;
+		public static bool isSimulatingMouse = false;
 
 		private static readonly HashSet<KeyCode> keysDown = new HashSet<KeyCode>();
 		private static readonly HashSet<KeyCode> keysPressed = new HashSet<KeyCode>();
@@ -36,17 +37,24 @@ namespace SDG.Unturned
 
 		public static Vector3 mousePosition
 		{
-			get => isSimulation ? _mousePosition : Input.mousePosition;
+			get => isSimulatingMouse ? _mousePosition : Input.mousePosition;
 			set
 			{
 				_mousePosition = value;
-				isSimulation = true;
+				isSimulatingMouse = true;
 			}
+		}
+
+		// Backward compatibility property
+		public static bool isSimulation
+		{
+			get => isSimulatingMouse;
+			set => isSimulatingMouse = value;
 		}
 
 		public static void SetKeyDown(KeyCode key)
 		{
-			isSimulation = true;
+			if (key == KeyCode.None) return;
 			if (!keysPressed.Contains(key))
 			{
 				keysDown.Add(key);
@@ -56,7 +64,7 @@ namespace SDG.Unturned
 
 		public static void SetKeyUp(KeyCode key)
 		{
-			isSimulation = true;
+			if (key == KeyCode.None) return;
 			if (keysPressed.Contains(key))
 			{
 				keysPressed.Remove(key);
@@ -81,17 +89,17 @@ namespace SDG.Unturned
 
 		public static bool GetKey(KeyCode key)
 		{
-			return isSimulation && keysPressed.Contains(key);
+			return keysPressed.Contains(key);
 		}
 
 		public static bool GetKeyDown(KeyCode key)
 		{
-			return isSimulation && keysDown.Contains(key);
+			return keysDown.Contains(key);
 		}
 
 		public static bool GetKeyUp(KeyCode key)
 		{
-			return isSimulation && keysUp.Contains(key);
+			return keysUp.Contains(key);
 		}
 
 		public static void ClearFrameDeltas()
