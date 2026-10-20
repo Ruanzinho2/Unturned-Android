@@ -11,6 +11,13 @@ namespace SDG.Unturned
 	/// </summary>
 	public static class InputBroker
 	{
+		static InputBroker()
+		{
+#if UNITY_ANDROID
+			Input.simulateMouseWithTouches = false;
+#endif
+		}
+
 		public static bool isSimulation = false;
 		public static bool isSimulatingMouse = false;
 

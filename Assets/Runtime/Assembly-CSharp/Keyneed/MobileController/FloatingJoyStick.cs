@@ -7,6 +7,7 @@ namespace Keyneed.MobileController
 {
 	/// <summary>
 	/// Virtual floating joystick for character and vehicle movement.
+	/// Injects movement directly into InputBroker and exposes continuous analog values.
 	/// </summary>
 	public class FloatingJoyStick : Singleton<FloatingJoyStick>, IPointerDownHandler, IPointerUpHandler, IDragHandler
 	{
@@ -16,7 +17,7 @@ namespace Keyneed.MobileController
 		public Vector2 joyStickInput = Vector2.zero;
 		public Vector2 joystickCurrentPosition = Vector2.zero;
 
-		public Color normalColor = new Color(1f, 1f, 1f, 0.4f);
+		public Color normalColor = new Color(1f, 1f, 1f, 0.39215686f);
 		public Color pressedColor = new Color(1f, 1f, 1f, 0.8f);
 		public State joystickState = State.Interactable;
 
@@ -30,6 +31,7 @@ namespace Keyneed.MobileController
 		private Vector2 m_InitialBackgroundPos;
 		private Image m_BackgroundImage;
 		private Image m_HandleImage;
+		private bool wasAutoSprinting = false;
 
 		private void Start()
 		{
@@ -58,10 +60,10 @@ namespace Keyneed.MobileController
 			SetJoystickColor(pressedColor);
 
 			// Floating positioning on touch down
-			if (joystickBackground != null && m_Canvas != null)
+			if (joystickBackground != null)
 			{
 				RectTransform parentRt = joystickBackground.parent as RectTransform;
-				if (parentRt != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRt, eventData.position, eventData.pressEventCamera, out Vector2 localPoint))
+				if (parentRt != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRt, eventData.position, null, out Vector2 localPoint))
 				{
 					joystickBackground.anchoredPosition = localPoint;
 				}
@@ -69,8 +71,6 @@ namespace Keyneed.MobileController
 
 			OnDrag(eventData);
 		}
-
-		private bool wasAutoSprinting = false;
 
 		public void OnDrag(PointerEventData eventData)
 		{
@@ -81,13 +81,46 @@ namespace Keyneed.MobileController
 
 			if (joystickBackground != null && joyStick != null)
 			{
-				if (RectTransformUtility.ScreenPointToLocalPointInRectangle(joystickBackground, eventData.position, eventData.pressEventCamera, out Vector2 localPoint))
+				if (RectTransformUtility.ScreenPointToLocalPointInRectangle(joystickBackground, eventData.position, null, out Vector2 localPoint))
 				{
 					float distance = Mathf.Clamp(localPoint.magnitude, 0f, joystickMovementRange);
 					Vector2 direction = localPoint.normalized;
 					joyStick.anchoredPosition = direction * distance;
 					joyStickInput = joyStick.anchoredPosition / (joystickMovementRange > 0f ? joystickMovementRange : 1f);
 					joystickCurrentPosition = joyStick.anchoredPosition;
+
+					// Direct movement key injection via InputBroker
+					if (joyStickInput.x < -0.2f)
+					{
+						SDG.Unturned.InputBroker.SetKeyDown(SDG.Unturned.ControlsSettings.left);
+						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.right);
+					}
+					else if (joyStickInput.x > 0.2f)
+					{
+						SDG.Unturned.InputBroker.SetKeyDown(SDG.Unturned.ControlsSettings.right);
+						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.left);
+					}
+					else
+					{
+						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.left);
+						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.right);
+					}
+
+					if (joyStickInput.y > 0.2f)
+					{
+						SDG.Unturned.InputBroker.SetKeyDown(SDG.Unturned.ControlsSettings.up);
+						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.down);
+					}
+					else if (joyStickInput.y < -0.2f)
+					{
+						SDG.Unturned.InputBroker.SetKeyDown(SDG.Unturned.ControlsSettings.down);
+						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.up);
+					}
+					else
+					{
+						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.up);
+						SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.down);
+					}
 
 					if (joyStickInput.y > 0.85f)
 					{
@@ -115,6 +148,12 @@ namespace Keyneed.MobileController
 				wasAutoSprinting = false;
 				SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.sprint);
 			}
+
+			// Release all simulated movement keys
+			SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.left);
+			SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.right);
+			SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.up);
+			SDG.Unturned.InputBroker.SetKeyUp(SDG.Unturned.ControlsSettings.down);
 
 			if (joyStick != null) joyStick.anchoredPosition = Vector2.zero;
 			if (joystickBackground != null) joystickBackground.anchoredPosition = m_InitialBackgroundPos;
