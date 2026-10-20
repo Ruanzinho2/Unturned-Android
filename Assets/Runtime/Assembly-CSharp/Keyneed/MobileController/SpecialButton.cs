@@ -7,9 +7,10 @@ namespace Keyneed.MobileController
 {
 	/// <summary>
 	/// Virtual button capable of simulating KeyCodes via InputBroker,
-	/// triggering UnityEvents, and optionally streaming drag deltas into camera look rotation.
+	/// triggering UnityEvents, and optionally streaming pointer events into camera look rotation (UltimateTouchpad).
+	/// Faithful reproduction of the Russian Unturned APK IL2CPP 0x107865C - 0x1078F34.
 	/// </summary>
-	public class SpecialButton : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IDragHandler
+	public class SpecialButton : MonoBehaviour, IPointerDownHandler, IEventSystemHandler, IPointerUpHandler, IDragHandler
 	{
 		public UnityEvent onButtondown = new UnityEvent();
 		public UnityEvent onSelect = new UnityEvent();
@@ -39,13 +40,25 @@ namespace Keyneed.MobileController
 		{
 			if (ControllerManager.editMode) return;
 			if (buttonState == State.Un_Interactable) return;
+			if (m_Selected) return;
 
 			if (keySimulate != KeyCode.None)
 			{
 				InputBroker.SetKeyDown(keySimulate);
 			}
 
+			m_Selected = true;
+			OnSelected();
 			onButtondown?.Invoke();
+
+			if (lookSimulate)
+			{
+				UltimateTouchpad ut = UltimateTouchpad.GetUltimateTouchpad("LookTouchPad_8tdg5543ffre");
+				if (ut != null)
+				{
+					ut.OnPointerDown(eventData);
+				}
+			}
 		}
 
 		public void OnDrag(PointerEventData eventData)
@@ -55,10 +68,10 @@ namespace Keyneed.MobileController
 
 			if (lookSimulate)
 			{
-				UltimateTouchpad touchpad = UltimateTouchpad.GetUltimateTouchpad("LookTouchPad_8tdg5543ffre");
-				if (touchpad != null)
+				UltimateTouchpad ut = UltimateTouchpad.GetUltimateTouchpad("LookTouchPad_8tdg5543ffre");
+				if (ut != null)
 				{
-					touchpad.FeedExternalLookDelta(eventData.delta);
+					ut.OnDrag(eventData);
 				}
 			}
 		}
@@ -67,9 +80,22 @@ namespace Keyneed.MobileController
 		{
 			if (ControllerManager.editMode) return;
 			if (buttonState == State.Un_Interactable) return;
+			if (!m_Selected) return;
+
+			if (lookSimulate)
+			{
+				UltimateTouchpad ut = UltimateTouchpad.GetUltimateTouchpad("LookTouchPad_8tdg5543ffre");
+				if (ut != null)
+				{
+					ut.OnPointerUp(eventData);
+				}
+			}
+
+			m_Selected = false;
 
 			if (keySimulate != KeyCode.None)
 			{
+				InputBroker.DeleteKey(keySimulate);
 				InputBroker.SetKeyUp(keySimulate);
 			}
 

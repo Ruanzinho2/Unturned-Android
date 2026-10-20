@@ -1417,7 +1417,8 @@ namespace SDG.Unturned
 				_look_x = 0;
 				_look_y = 0;
 
-				if (PlayerUI.window.isCursorLocked && !isIgnoringInput)
+				bool canProcessLook = !isIgnoringInput && (PlayerUI.window == null || !PlayerUI.window.showCursor);
+				if (canProcessLook)
 				{
 					if (IsControllingFreecam)
 					{
@@ -1446,49 +1447,32 @@ namespace SDG.Unturned
 									break;
 							}
 
-							_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
+							float hMobile = UltimateTouchpad.GetHorizontalAxis("LookTouchPad_8tdg5543ffre");
+							float vMobile = UltimateTouchpad.GetVerticalAxis("LookTouchPad_8tdg5543ffre");
+							bool isTouchLookActive = UltimateTouchpad.GetTouchpadState("LookTouchPad_8tdg5543ffre");
 
-							if (ControlsSettings.invert)
+							if (isTouchLookActive || (Application.isMobilePlatform && (Mathf.Abs(hMobile) > 0.0001f || Mathf.Abs(vMobile) > 0.0001f)))
 							{
-								_orbitPitch += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+								_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile * (float)warp_x;
+								_orbitPitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile * (float)warp_y;
 							}
-							else
+							else if (PlayerUI.window.isCursorLocked || !Application.isMobilePlatform)
 							{
-								_orbitPitch -= ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+								_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
+
+								if (ControlsSettings.invert)
+								{
+									_orbitPitch += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+								}
+								else
+								{
+									_orbitPitch -= ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+								}
 							}
 						}
 					}
 					else
 					{
-						if (perspective == EPlayerPerspective.FIRST || isTracking || isLocking || isFocusing)
-						{
-							_look_x = ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
-							_look_y = ControlsSettings.mouseAimSensitivity * -InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
-						}
-
-						if (InputEx.GetKey(ControlsSettings.rollLeft))
-						{
-							_look_x = player.movement.getVehicle() != null ? -player.movement.getVehicle().asset.airTurnResponsiveness : -1;
-						}
-						else if (InputEx.GetKey(ControlsSettings.rollRight))
-						{
-							_look_x = player.movement.getVehicle() != null ? player.movement.getVehicle().asset.airTurnResponsiveness : 1;
-						}
-
-						if (InputEx.GetKey(ControlsSettings.pitchUp))
-						{
-							_look_y = player.movement.getVehicle() != null ? -player.movement.getVehicle().asset.airTurnResponsiveness : -1;
-						}
-						else if (InputEx.GetKey(ControlsSettings.pitchDown))
-						{
-							_look_y = player.movement.getVehicle() != null ? player.movement.getVehicle().asset.airTurnResponsiveness : 1;
-						}
-
-						if (ControlsSettings.invertFlight)
-						{
-							_look_y *= -1;
-						}
-
 						float zoomSensitivity = 1.0f;
 						switch (ControlsSettings.sensitivityScalingMode)
 						{
@@ -1520,41 +1504,105 @@ namespace SDG.Unturned
 								break;
 						}
 
-						if (player.movement.getVehicle() != null && perspective == EPlayerPerspective.THIRD)
-						{
-							_orbitYaw += ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
-							_orbitYaw = orbitYaw % 360.0f;
-						}
-						else
-						{
-							if (player.movement.getVehicle() == null || !player.movement.getVehicle().asset.hasLockMouse || !player.movement.getVehicle().isDriver)
-							{
-								_yaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
-							}
-						}
+						float hMobile = UltimateTouchpad.GetHorizontalAxis("LookTouchPad_8tdg5543ffre");
+						float vMobile = UltimateTouchpad.GetVerticalAxis("LookTouchPad_8tdg5543ffre");
+						bool isTouchLookActive = UltimateTouchpad.GetTouchpadState("LookTouchPad_8tdg5543ffre");
+						bool isMobileLook = isTouchLookActive || (Application.isMobilePlatform && (Mathf.Abs(hMobile) > 0.0001f || Mathf.Abs(vMobile) > 0.0001f));
 
-						if (player.movement.getVehicle() != null && perspective == EPlayerPerspective.THIRD)
+						if (isMobileLook)
 						{
-							if (ControlsSettings.invert)
+							if (perspective == EPlayerPerspective.FIRST || isTracking || isLocking || isFocusing)
 							{
-								_orbitPitch += ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+								_look_x = ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile * (float)warp_x;
+								_look_y = ControlsSettings.mouseAimSensitivity * zoomSensitivity * vMobile * (float)warp_y;
+							}
+
+							if (player.movement.getVehicle() != null && perspective == EPlayerPerspective.THIRD)
+							{
+								_orbitYaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile * (float)warp_x;
+								_orbitYaw = orbitYaw % 360.0f;
+								_orbitPitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile * (float)warp_y;
 							}
 							else
 							{
-								_orbitPitch -= ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+								if (player.movement.getVehicle() == null || !player.movement.getVehicle().asset.hasLockMouse || !player.movement.getVehicle().isDriver)
+								{
+									_yaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * hMobile * (float)warp_x;
+								}
+
+								if (player.movement.getVehicle() == null || !player.movement.getVehicle().asset.hasLockMouse || !player.movement.getVehicle().isDriver)
+								{
+									_pitch += ControlsSettings.mouseAimSensitivity * -4.0f * vMobile * (float)warp_y;
+								}
 							}
 						}
-						else
+						else if (PlayerUI.window.isCursorLocked || !Application.isMobilePlatform)
 						{
-							if (player.movement.getVehicle() == null || !player.movement.getVehicle().asset.hasLockMouse || !player.movement.getVehicle().isDriver)
+							if (perspective == EPlayerPerspective.FIRST || isTracking || isLocking || isFocusing)
+							{
+								_look_x = ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
+								_look_y = ControlsSettings.mouseAimSensitivity * -InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+							}
+
+							if (InputEx.GetKey(ControlsSettings.rollLeft))
+							{
+								_look_x = player.movement.getVehicle() != null ? -player.movement.getVehicle().asset.airTurnResponsiveness : -1;
+							}
+							else if (InputEx.GetKey(ControlsSettings.rollRight))
+							{
+								_look_x = player.movement.getVehicle() != null ? player.movement.getVehicle().asset.airTurnResponsiveness : 1;
+							}
+
+							if (InputEx.GetKey(ControlsSettings.pitchUp))
+							{
+								_look_y = player.movement.getVehicle() != null ? -player.movement.getVehicle().asset.airTurnResponsiveness : -1;
+							}
+							else if (InputEx.GetKey(ControlsSettings.pitchDown))
+							{
+								_look_y = player.movement.getVehicle() != null ? player.movement.getVehicle().asset.airTurnResponsiveness : 1;
+							}
+
+							if (ControlsSettings.invertFlight)
+							{
+								_look_y *= -1;
+							}
+
+							if (player.movement.getVehicle() != null && perspective == EPlayerPerspective.THIRD)
+							{
+								_orbitYaw += ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
+								_orbitYaw = orbitYaw % 360.0f;
+							}
+							else
+							{
+								if (player.movement.getVehicle() == null || !player.movement.getVehicle().asset.hasLockMouse || !player.movement.getVehicle().isDriver)
+								{
+									_yaw += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_x") * yawInputMultiplier;
+								}
+							}
+
+							if (player.movement.getVehicle() != null && perspective == EPlayerPerspective.THIRD)
 							{
 								if (ControlsSettings.invert)
 								{
-									_pitch += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+									_orbitPitch += ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
 								}
 								else
 								{
-									_pitch -= ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+									_orbitPitch -= ControlsSettings.mouseAimSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+								}
+							}
+							else
+							{
+								if (player.movement.getVehicle() == null || !player.movement.getVehicle().asset.hasLockMouse || !player.movement.getVehicle().isDriver)
+								{
+									if (ControlsSettings.invert)
+									{
+										_pitch += ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+									}
+									else
+									{
+										_pitch -= ControlsSettings.mouseAimSensitivity * zoomSensitivity * InputBroker.GetAxis("mouse_y") * pitchInputMultiplier;
+									}
 								}
 							}
 						}

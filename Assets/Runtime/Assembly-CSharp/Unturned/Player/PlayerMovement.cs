@@ -1543,8 +1543,8 @@ namespace SDG.Unturned
 					{
 						float stickH = Keyneed.MobileController.FloatingJoyStick.Instance.GetHorizontalValue();
 						float stickV = Keyneed.MobileController.FloatingJoyStick.Instance.GetVerticalValue();
-						if (Mathf.Abs(stickH) > 0.15f) stick_x = (stickH > 0f) ? 1 : -1;
-						if (Mathf.Abs(stickV) > 0.15f) stick_y = (stickV > 0f) ? 1 : -1;
+						if (Mathf.Abs(stickH) >= 0.2f) stick_x = (stickH > 0f) ? 1 : -1;
+						if (Mathf.Abs(stickV) >= 0.2f) stick_y = (stickV > 0f) ? 1 : -1;
 					}
 
 					if (getVehicle() != null && getVehicle().asset != null && (getVehicle().asset.engine == EEngine.PLANE || getVehicle().asset.engine == EEngine.HELICOPTER || getVehicle().asset.engine == EEngine.BLIMP))

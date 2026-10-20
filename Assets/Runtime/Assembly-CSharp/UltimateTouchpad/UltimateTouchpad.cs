@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -5,16 +6,20 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Tank & Healer Studio Ultimate Touchpad.
-/// Used for smooth touch look control in Unturned Android port.
+/// Faithful reproduction of the Russian Unturned APK IL2CPP 0x1268800 - 0x126A800.
 /// </summary>
-public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
+public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IEventSystemHandler, IPointerUpHandler, IDragHandler
 {
+	public enum DisplayType { Touchpad, Inactive }
+	public enum ScaleReference { ScreenHeight, ScreenWidth }
+	public enum TapCountOption { None, Single, Double }
+
 	public static Dictionary<string, UltimateTouchpad> UltimateTouchpads = new Dictionary<string, UltimateTouchpad>();
 
 	public string touchpadName = "LookTouchPad_8tdg5543ffre";
 
 	public RectTransform baseTrans;
-	private int _inputId = -1;
+	private int _inputId = -10;
 	public bool inputActive = false;
 	public Rect touchpadRect;
 	public Vector2 previousPosition = Vector2.zero;
@@ -26,7 +31,7 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler
 	public float screenWidth = 1920f;
 	public float screenHeight = 1080f;
 
-	public Canvas ParentCanvas { get; set; }
+	public Canvas ParentCanvas { get; private set; }
 	public RectTransform canvasRectTrans;
 
 	public float touchSizeWidth = 50f;
@@ -43,51 +48,46 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler
 	public float xGravity = 0.5f;
 	public float yGravity = 0.5f;
 
-	public bool displayBase = false;
+	public bool displayBase = true;
+	public DisplayType displayType = DisplayType.Touchpad;
 	public Image baseImage;
-	public Color baseColor = new Color(1f, 1f, 1f, 0.1f);
-	public Color invisibleBaseColor = Color.clear;
+	public Color baseColor = new Color(1f, 1f, 1f, 0f);
+	private Color invisibleBaseColor = Color.clear;
 
 	public float alphaEnabled = 1f;
 	public float alphaDisabled = 0f;
-
-	public float enabledDuration = 0.2f;
-	public float disabledDuration = 0.5f;
-	public float enabledSpeed = 5f;
-	public float disabledSpeed = 2f;
-	public float inactiveTime = 0f;
+	public float enabledDuration = 1f;
+	public float disabledDuration = 1f;
+	private float enabledSpeed = 1f;
+	private float disabledSpeed = 1f;
+	public float inactiveTime = 5f;
 
 	public bool displayInput = false;
 	public Image inputImage;
 	public Color inputColor = Color.white;
-	public Color invisibleInputColor = Color.clear;
+	private Color invisibleInputColor = Color.clear;
 
-	public float imageSize = 100f;
+	public ScaleReference scaleReference = ScaleReference.ScreenHeight;
+	public float imageSize = 0.5f;
+
+	public TapCountOption tapCountOption = TapCountOption.None;
 	public float tapCountDuration = 0.5f;
 	public int targetTapCount = 2;
-	public bool tapCountAchieved = false;
-	public float currentTapTime = 0f;
-	public int tapCount = 0;
-	public bool useTouchInput = true;
+	private bool tapCountAchieved = false;
+	private float currentTapTime = 0f;
+	private int tapCount = 0;
 
-	private Vector2 accumulatedDelta = Vector2.zero;
+	public bool useTouchInput = false;
 
 	private void Awake()
 	{
 		if (baseTrans == null) baseTrans = GetComponent<RectTransform>();
-		if (ParentCanvas == null) ParentCanvas = GetComponentInParent<Canvas>();
+		ParentCanvas = GetComponentInParent<Canvas>();
 		if (ParentCanvas != null) canvasRectTrans = ParentCanvas.GetComponent<RectTransform>();
 
 		if (!string.IsNullOrEmpty(touchpadName))
 		{
-			if (UltimateTouchpads.ContainsKey(touchpadName))
-			{
-				UltimateTouchpads[touchpadName] = this;
-			}
-			else
-			{
-				UltimateTouchpads.Add(touchpadName, this);
-			}
+			UltimateTouchpads[touchpadName] = this;
 		}
 	}
 
@@ -112,79 +112,91 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler
 	{
 		_xSensitivity = xSensitivity * screenWidthReference;
 		_ySensitivity = ySensitivity * screenWidthReference;
+
+		if (canvasRectTrans != null)
+		{
+			screenWidth = canvasRectTrans.sizeDelta.x;
+			screenHeight = canvasRectTrans.sizeDelta.y;
+		}
+		else
+		{
+			screenWidth = Screen.width;
+			screenHeight = Screen.height;
+		}
+
 		UpdateTouchpadPositioning();
 	}
 
 	public void OnPointerDown(PointerEventData touchInfo)
 	{
-		if (inputActive) return;
-
-		inputActive = true;
-		_inputId = touchInfo.pointerId;
-		previousPosition = touchInfo.position;
-		currentPosition = touchInfo.position;
-
-		tapCount++;
-		currentTapTime = tapCountDuration;
-		if (tapCount >= targetTapCount)
-		{
-			tapCountAchieved = true;
-		}
+		if (useTouchInput) return;
+		ProcessOnInputDown(touchInfo.position, touchInfo.pointerId);
 	}
 
 	public void OnDrag(PointerEventData touchInfo)
 	{
-		if (!inputActive || touchInfo.pointerId != _inputId) return;
-
+		if (useTouchInput) return;
+		if (_inputId != touchInfo.pointerId) return;
 		currentPosition = touchInfo.position;
 	}
 
 	public void OnPointerUp(PointerEventData touchInfo)
 	{
-		if (touchInfo.pointerId == _inputId)
+		if (useTouchInput) return;
+		ProcessOnInputUp(touchInfo.position, touchInfo.pointerId);
+	}
+
+	private void ProcessOnInputDown(Vector2 inputPosition, int inputId)
+	{
+		if (inputActive) return;
+
+		inputActive = true;
+		_inputId = inputId;
+		currentPosition = inputPosition;
+		previousPosition = inputPosition;
+
+		StartCoroutine("ProcessInput");
+	}
+
+	private void ProcessOnInputMoved(Vector2 inputPosition, int inputId)
+	{
+		if (_inputId != inputId) return;
+		currentPosition = inputPosition;
+	}
+
+	private void ProcessOnInputUp(Vector2 inputPosition, int inputId)
+	{
+		if (_inputId != inputId) return;
+
+		inputActive = false;
+		_inputId = -10;
+		horizontalValue = 0f;
+		verticalValue = 0f;
+	}
+
+	private IEnumerator ProcessInput()
+	{
+		while (inputActive)
 		{
-			ResetTouchpad();
+			UpdateTouchPad();
+			yield return null;
 		}
 	}
 
-	/// <summary>
-	/// Injects external delta from SpecialButtons that have lookSimulate enabled (e.g. Fire, Aim).
-	/// </summary>
-	public void FeedExternalLookDelta(Vector2 delta)
+	private void UpdateTouchPad()
 	{
-		currentPosition += delta;
-	}
-
-	private void Update()
-	{
-		UpdateTouchPad();
-
-		if (currentTapTime > 0f)
-		{
-			currentTapTime -= Time.unscaledDeltaTime;
-			if (currentTapTime <= 0f)
-			{
-				tapCount = 0;
-				tapCountAchieved = false;
-			}
-		}
-	}
-
-	public void UpdateTouchPad()
-	{
-		float referenceWidth = (screenWidth > 0f) ? screenWidth : (Screen.width > 0 ? (float)Screen.width : 1920f);
-		float referenceHeight = (screenHeight > 0f) ? screenHeight : (Screen.height > 0 ? (float)Screen.height : 1080f);
-
 		Vector2 diff = currentPosition - previousPosition;
 		if (ParentCanvas != null && ParentCanvas.scaleFactor > 0f)
 		{
 			diff /= ParentCanvas.scaleFactor;
 		}
 
-		float targetH = (diff.x / referenceWidth) * _xSensitivity;
-		float targetV = (diff.y / referenceHeight) * _ySensitivity;
+		float w = (screenWidth > 0f) ? screenWidth : 1920f;
+		float h = (screenHeight > 0f) ? screenHeight : 1080f;
 
-		// Authentic Russian APK exponential smoothing
+		float targetH = (diff.x / w) * _xSensitivity;
+		float targetV = (diff.y / h) * _ySensitivity;
+
 		horizontalValue = Mathf.Lerp(horizontalValue, targetH, xGravity);
 		verticalValue = Mathf.Lerp(verticalValue, targetV, yGravity);
 
@@ -194,7 +206,7 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IDragHandler
 	public void ResetTouchpad()
 	{
 		inputActive = false;
-		_inputId = -1;
+		_inputId = -10;
 		horizontalValue = 0f;
 		verticalValue = 0f;
 		previousPosition = currentPosition;

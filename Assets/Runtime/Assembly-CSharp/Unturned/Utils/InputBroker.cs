@@ -31,28 +31,26 @@ namespace SDG.Unturned
 		{
 			if (axisName == "mouse_x")
 			{
-				float simulated = UltimateTouchpad.GetHorizontalAxis("LookTouchPad_8tdg5543ffre");
 #if UNITY_ANDROID
 				// When touchscreen is active, suppress Unity's touch-to-mouse axis emulation
 				// which produces wild jumps between multiple fingers.
 				if (Input.touchCount > 0)
 				{
-					return simulated;
+					return 0f;
 				}
 #endif
-				return Input.GetAxis("mouse_x") + simulated;
+				return Input.GetAxis("mouse_x");
 			}
 			if (axisName == "mouse_y")
 			{
-				float simulated = UltimateTouchpad.GetVerticalAxis("LookTouchPad_8tdg5543ffre");
 #if UNITY_ANDROID
 				// Suppress multitouch cross-finger delta jumps
 				if (Input.touchCount > 0)
 				{
-					return simulated;
+					return 0f;
 				}
 #endif
-				return Input.GetAxis("mouse_y") + simulated;
+				return Input.GetAxis("mouse_y");
 			}
 			return Input.GetAxis(axisName);
 		}

@@ -8,11 +8,10 @@ namespace Keyneed.MobileController
 {
 	/// <summary>
 	/// Virtual joystick for character and vehicle movement.
-	/// Faithful reproduction of the Russian Unturned mobile joystick implementation.
-	/// Keeps the base stationary at its HUD position and moves only the inner knob (Handle),
-	/// with strict multitouch finger tracking to prevent any cross-touch conflicts.
+	/// Faithful reproduction of the Russian Unturned mobile joystick implementation (IL2CPP 0x107671C - 0x1076D38).
+	/// Dynamically centers at the touch point and deflects the inner handle.
 	/// </summary>
-	public class FloatingJoyStick : Singleton<FloatingJoyStick>, IPointerDownHandler, IPointerUpHandler, IDragHandler
+	public class FloatingJoyStick : Singleton<FloatingJoyStick>, IPointerUpHandler, IEventSystemHandler, IPointerDownHandler, IDragHandler
 	{
 		public RectTransform joystickBackground;
 		public RectTransform joyStick;
@@ -30,11 +29,8 @@ namespace Keyneed.MobileController
 		public UnityEvent onStoppedDraggingJoystick = new UnityEvent();
 		private string _sceneNameTemp;
 
-		private Vector2 m_InitialBackgroundPos;
 		private Image m_BackgroundImage;
 		private Image m_HandleImage;
-		private Canvas m_ParentCanvas;
-
 		private int _activePointerId = -1;
 		private bool _isDragging = false;
 
@@ -42,11 +38,8 @@ namespace Keyneed.MobileController
 		{
 			onGameStart?.Invoke();
 
-			m_ParentCanvas = GetComponentInParent<Canvas>();
-
 			if (joystickBackground != null)
 			{
-				m_InitialBackgroundPos = joystickBackground.anchoredPosition;
 				m_BackgroundImage = joystickBackground.GetComponent<Image>();
 			}
 			if (joyStick != null)
@@ -67,17 +60,17 @@ namespace Keyneed.MobileController
 		{
 			if (ControllerManager.editMode) return;
 			if (joystickState == State.Un_Interactable) return;
-			if (_isDragging) return; // Multitouch isolation: lock onto first finger
+			if (_isDragging) return; // Prevent secondary touch hijacking
 
 			_isDragging = true;
 			_activePointerId = eventData.pointerId;
 
 			SetJoystickColor(pressedColor);
 
-			// Keep the base stationary at its configured position
+			joystickCurrentPosition = eventData.position;
 			if (joystickBackground != null)
 			{
-				joystickBackground.anchoredPosition = m_InitialBackgroundPos;
+				joystickBackground.position = (Vector3)eventData.position;
 			}
 			if (joyStick != null)
 			{
@@ -92,33 +85,26 @@ namespace Keyneed.MobileController
 		{
 			if (ControllerManager.editMode) return;
 			if (joystickState == State.Un_Interactable) return;
-			if (!_isDragging || eventData.pointerId != _activePointerId) return; // Ignore any other finger
+			if (!_isDragging || eventData.pointerId != _activePointerId) return;
 
 			onStartedDraggingJoystick?.Invoke();
 
-			// Calculate vector from the stationary background center on screen to the touch point
-			Vector2 bgCenter = (joystickBackground != null) ? (Vector2)joystickBackground.position : eventData.position;
-			Vector2 diff = eventData.position - bgCenter;
+			Vector2 diff = eventData.position - joystickCurrentPosition;
+			float radius = (joystickBackground != null) ? (joystickBackground.sizeDelta.x * 0.5f) : 125f;
 
-			float scale = (m_ParentCanvas != null && m_ParentCanvas.scaleFactor > 0f) ? m_ParentCanvas.scaleFactor : 1f;
-			float radiusCanvas = (joystickBackground != null) ? (joystickBackground.sizeDelta.x * 0.5f) : 125f;
-			float radiusScreen = radiusCanvas * scale;
-
-			float mag = diff.magnitude;
-			if (mag > radiusScreen)
+			if (diff.magnitude > radius)
 			{
 				joyStickInput = diff.normalized;
 			}
 			else
 			{
-				joyStickInput = (radiusScreen > 0f) ? (diff / radiusScreen) : Vector2.zero;
+				joyStickInput = (radius > 0f) ? (diff / radius) : Vector2.zero;
 			}
 
-			// Only move the inner knob (Handle), base remains stationary
 			if (joyStick != null && joystickBackground != null)
 			{
 				float range = (joystickMovementRange != 0f) ? joystickMovementRange : 1f;
-				joyStick.anchoredPosition = (joyStickInput * radiusCanvas) * range;
+				joyStick.anchoredPosition = (joyStickInput * (joystickBackground.sizeDelta.x * 0.5f)) * range;
 			}
 		}
 
@@ -126,7 +112,7 @@ namespace Keyneed.MobileController
 		{
 			if (ControllerManager.editMode) return;
 			if (joystickState == State.Un_Interactable) return;
-			if (!_isDragging || eventData.pointerId != _activePointerId) return; // Ignore other finger releases
+			if (!_isDragging || eventData.pointerId != _activePointerId) return;
 
 			_isDragging = false;
 			_activePointerId = -1;
@@ -137,10 +123,6 @@ namespace Keyneed.MobileController
 			if (joyStick != null)
 			{
 				joyStick.anchoredPosition = Vector2.zero;
-			}
-			if (joystickBackground != null)
-			{
-				joystickBackground.anchoredPosition = m_InitialBackgroundPos;
 			}
 
 			onStoppedDraggingJoystick?.Invoke();
