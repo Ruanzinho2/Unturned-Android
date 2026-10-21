@@ -114,8 +114,30 @@ namespace Keyneed.MobileController
 
 		public State GetState() => buttonState;
 
+		public void ResetButton()
+		{
+			if (m_Selected)
+			{
+				m_Selected = false;
+				if (keySimulate != KeyCode.None)
+				{
+					InputBroker.DeleteKey(keySimulate);
+					InputBroker.SetKeyUp(keySimulate);
+				}
+				onButtonup?.Invoke();
+			}
+		}
+
 		private void Update()
 		{
+			if (m_Selected && RussianHUDBuilder.IsAnyUIOpen())
+			{
+				bool isInventoryButton = RussianHUDBuilder.IsInventoryOpen() && (keySimulate == KeyCode.Tab || gameObject.name == "Inventory");
+				if (!isInventoryButton)
+				{
+					ResetButton();
+				}
+			}
 		}
 	}
 }

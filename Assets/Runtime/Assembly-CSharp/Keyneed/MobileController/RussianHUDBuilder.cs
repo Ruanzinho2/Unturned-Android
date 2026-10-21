@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using SDG.Unturned;
 
@@ -14,6 +15,29 @@ namespace Keyneed.MobileController
 	{
 		private static RussianHUDBuilder _instance;
 		public static RussianHUDBuilder Instance => _instance;
+
+		public static bool IsAnyUIOpen()
+		{
+			if (string.Equals(SceneManager.GetActiveScene().name, "Menu")) return true;
+			if (Player.player == null) return true;
+			if (PlayerUI.window != null && PlayerUI.window.showCursor) return true;
+			if (PlayerDashboardUI.active) return true;
+			if (PlayerPauseUI.active) return true;
+			if (PlayerDeathUI.active) return true;
+			if (PlayerLifeUI.chatting) return true;
+			if (PlayerLifeUI.gesturing) return true;
+			if (PlayerNPCDialogueUI.active) return true;
+			if (PlayerNPCVendorUI.active) return true;
+			if (PlayerNPCQuestUI.active) return true;
+			if (PlayerBarricadeSignUI.active) return true;
+			if (PlayerBarricadeLibraryUI.active) return true;
+			return false;
+		}
+
+		public static bool IsInventoryOpen()
+		{
+			return PlayerDashboardUI.active;
+		}
 
 		private void Awake()
 		{

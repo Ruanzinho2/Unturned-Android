@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using Keyneed.MobileController;
 
 /// <summary>
 /// Tank & Healer Studio Ultimate Touchpad.
@@ -131,6 +132,15 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IEventSystem
 
 	private void Update()
 	{
+		if (RussianHUDBuilder.IsAnyUIOpen())
+		{
+			if (inputActive)
+			{
+				ProcessOnInputUp(Vector2.zero, _inputId);
+			}
+			return;
+		}
+
 		// Direct hardware touch polling fallback (guarantees operation if EventSystem misses events)
 		if (Input.touchCount > 0)
 		{
@@ -183,6 +193,7 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IEventSystem
 
 	private void ProcessOnInputDown(Vector2 inputPosition, int inputId)
 	{
+		if (RussianHUDBuilder.IsAnyUIOpen()) return;
 		if (inputActive) return;
 
 		inputActive = true;
@@ -196,6 +207,12 @@ public class UltimateTouchpad : MonoBehaviour, IPointerDownHandler, IEventSystem
 
 	private void ProcessOnInputMoved(Vector2 inputPosition, int inputId)
 	{
+		if (RussianHUDBuilder.IsAnyUIOpen())
+		{
+			ProcessOnInputUp(Vector2.zero, _inputId);
+			return;
+		}
+
 		if (!inputActive || _inputId != inputId) return;
 
 		Vector2 diff = inputPosition - previousPosition;

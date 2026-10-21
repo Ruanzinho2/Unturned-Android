@@ -31,6 +31,21 @@ namespace Keyneed.MobileController
 				return;
 			}
 
+			bool isAnyUIOpen = RussianHUDBuilder.IsAnyUIOpen();
+			bool isInventoryOpen = RussianHUDBuilder.IsInventoryOpen();
+
+			if (isAnyUIOpen)
+			{
+				// Exception: Keep the Tab (Inventory) button active and visible while inventory/dashboard is open
+				bool isInventoryButton = isInventoryOpen && ((m_SpecialButton != null && m_SpecialButton.keySimulate == KeyCode.Tab) || gameObject.name == "Inventory");
+
+				float alpha = isInventoryButton ? (m_SpecialButton != null ? m_SpecialButton.m_AlphaVisibility : 1f) : 0f;
+				m_CanvasGroup.alpha = alpha;
+				m_CanvasGroup.interactable = isInventoryButton;
+				m_CanvasGroup.blocksRaycasts = isInventoryButton;
+				return;
+			}
+
 			bool visible = true;
 			switch (m_ButtonPattern)
 			{
@@ -53,7 +68,8 @@ namespace Keyneed.MobileController
 					break;
 			}
 
-			m_CanvasGroup.alpha = visible ? 1f : 0f;
+			float targetAlpha = visible ? (m_SpecialButton != null ? m_SpecialButton.m_AlphaVisibility : 1f) : 0f;
+			m_CanvasGroup.alpha = targetAlpha;
 			m_CanvasGroup.interactable = visible;
 			m_CanvasGroup.blocksRaycasts = visible;
 		}

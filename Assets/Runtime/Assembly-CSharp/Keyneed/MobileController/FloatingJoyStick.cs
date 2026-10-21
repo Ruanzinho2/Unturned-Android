@@ -83,6 +83,15 @@ namespace Keyneed.MobileController
 			if (ControllerManager.editMode) return;
 			if (joystickState == State.Un_Interactable) return;
 
+			if (RussianHUDBuilder.IsAnyUIOpen())
+			{
+				if (_isDragging)
+				{
+					ResetJoystick();
+				}
+				return;
+			}
+
 			// Direct hardware touch polling fallback (guarantees operation if EventSystem misses events)
 			if (Input.touchCount > 0)
 			{
@@ -141,6 +150,7 @@ namespace Keyneed.MobileController
 		{
 			if (ControllerManager.editMode) return;
 			if (joystickState == State.Un_Interactable) return;
+			if (RussianHUDBuilder.IsAnyUIOpen()) return;
 			if (_isDragging && _activePointerId != pointerId) return; // Prevent secondary touch hijacking
 
 			_isDragging = true;
@@ -179,6 +189,11 @@ namespace Keyneed.MobileController
 		private void UpdateDrag(Vector2 screenPos, Camera eventCamera)
 		{
 			if (!_isDragging) return;
+			if (RussianHUDBuilder.IsAnyUIOpen())
+			{
+				ResetJoystick();
+				return;
+			}
 
 			onStartedDraggingJoystick?.Invoke();
 
