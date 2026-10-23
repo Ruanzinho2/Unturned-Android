@@ -85,11 +85,8 @@ namespace SDG.Unturned
 		public static void SetKeyUp(KeyCode key)
 		{
 			if (key == KeyCode.None) return;
-			if (keysPressed.Contains(key))
-			{
-				keysPressed.Remove(key);
-				keysUp.Add(key);
-			}
+			keysPressed.Remove(key);
+			keysUp.Add(key);
 		}
 
 		public static void DeleteKey(KeyCode key)

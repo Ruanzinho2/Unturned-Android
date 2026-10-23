@@ -252,6 +252,17 @@ namespace SDG.Unturned
 		private bool isReloading;
 		private bool isHammering;
 		private bool isAttaching;
+		public bool isInspectingAttachments => isAttaching;
+
+		public void CloseAttachments()
+		{
+			if (isAttaching)
+			{
+				isAttaching = false;
+				player.animator.play("Attach_Stop", false);
+				stopAttach();
+			}
+		}
 		private bool isUnjamming;
 
 		private float lastShot;
@@ -3967,20 +3978,29 @@ namespace SDG.Unturned
 
 			if (channel.IsLocalPlayer)
 			{
+				if (isAttaching && InputEx.ConsumeKeyDown(ControlsSettings.dashboard))
+				{
+					CloseAttachments();
+				}
+
+#if !UNITY_ANDROID
 				if (InputEx.GetKeyUp(ControlsSettings.attach))
 				{
 					if (isAttaching)
 					{
-						isAttaching = false;
-						player.animator.play("Attach_Stop", false);
-
-						stopAttach();
+						CloseAttachments();
 					}
 				}
+#endif
 
 				if (InputEx.GetKeyDown(ControlsSettings.tactical))
 				{
 					fireTacticalInput = true;
+				}
+
+				if (isAttaching && InputEx.ConsumeKeyDown(ControlsSettings.attach))
+				{
+					CloseAttachments();
 				}
 
 				if (!PlayerUI.window.showCursor)

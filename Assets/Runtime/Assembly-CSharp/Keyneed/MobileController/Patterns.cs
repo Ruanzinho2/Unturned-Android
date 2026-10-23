@@ -32,12 +32,12 @@ namespace Keyneed.MobileController
 			}
 
 			bool isAnyUIOpen = RussianHUDBuilder.IsAnyUIOpen();
-			bool isInventoryOpen = RussianHUDBuilder.IsInventoryOpen();
+			bool shouldShowTab = RussianHUDBuilder.ShouldShowTabButton();
 
 			if (isAnyUIOpen)
 			{
-				// Exception: Keep the Tab (Inventory) button active and visible while inventory/dashboard is open
-				bool isInventoryButton = isInventoryOpen && ((m_SpecialButton != null && m_SpecialButton.keySimulate == KeyCode.Tab) || gameObject.name == "Inventory");
+				// Exception: Keep the Tab (Inventory) button active and visible while inventory or gun attachments inspection is open
+				bool isInventoryButton = shouldShowTab && ((m_SpecialButton != null && m_SpecialButton.keySimulate == KeyCode.Tab) || gameObject.name == "Inventory");
 
 				float alpha = isInventoryButton ? (m_SpecialButton != null ? m_SpecialButton.m_AlphaVisibility : 1f) : 0f;
 				m_CanvasGroup.alpha = alpha;

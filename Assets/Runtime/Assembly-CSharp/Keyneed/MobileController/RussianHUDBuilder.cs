@@ -39,6 +39,20 @@ namespace Keyneed.MobileController
 			return PlayerDashboardUI.active;
 		}
 
+		public static bool IsWeaponInspectionOpen()
+		{
+			if (Player.player != null && Player.player.equipment != null && Player.player.equipment.useable is UseableGun gun)
+			{
+				return gun.isInspectingAttachments;
+			}
+			return false;
+		}
+
+		public static bool ShouldShowTabButton()
+		{
+			return IsInventoryOpen() || IsWeaponInspectionOpen();
+		}
+
 		private void Awake()
 		{
 			EnsureHUDExists();

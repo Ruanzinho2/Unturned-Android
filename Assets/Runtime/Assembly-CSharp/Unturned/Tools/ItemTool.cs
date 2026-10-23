@@ -348,6 +348,16 @@ namespace SDG.Unturned
 			{
 				Layerer.viewmodel(item);
 			}
+#if UNITY_ANDROID
+			else
+			{
+				Renderer[] itemRenderers = item.GetComponentsInChildren<Renderer>(true);
+				for (int rIdx = 0; rIdx < itemRenderers.Length; rIdx++)
+				{
+					itemRenderers[rIdx].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+				}
+			}
+#endif
 
 			if (skinAsset != null)
 			{

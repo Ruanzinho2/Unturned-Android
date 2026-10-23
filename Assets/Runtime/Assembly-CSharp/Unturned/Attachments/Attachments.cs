@@ -659,6 +659,17 @@ namespace SDG.Unturned
 					component.UpdateEventHook(this);
 				}
 			}
+
+#if UNITY_ANDROID
+			if (!viewmodel)
+			{
+				Renderer[] attRenderers = GetComponentsInChildren<Renderer>(true);
+				for (int i = 0; i < attRenderers.Length; i++)
+				{
+					attRenderers[i].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+				}
+			}
+#endif
 		}
 
 		private void Awake()

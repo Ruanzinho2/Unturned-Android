@@ -485,6 +485,14 @@ namespace SDG.Unturned
 				Transform item = ItemTool.getItem(id, 0, quality, state, false, asset, null);
 				item.parent = origin;
 
+#if UNITY_ANDROID
+				Renderer[] itemRenderers = origin.GetComponentsInChildren<Renderer>(true);
+				for (int rIdx = 0; rIdx < itemRenderers.Length; rIdx++)
+				{
+					itemRenderers[rIdx].shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+				}
+#endif
+
 				InteractableItem interactableItem = item.gameObject.AddComponent<InteractableItem>();
 				interactableItem.item = new Item(id, amount, quality, state);
 				interactableItem.asset = asset;

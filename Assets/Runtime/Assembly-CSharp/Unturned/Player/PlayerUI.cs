@@ -1902,6 +1902,10 @@ namespace SDG.Unturned
 					{
 						PlayerNPCVendorUI.closeNicely();
 					}
+					else if (Player.LocalPlayer != null && Player.LocalPlayer.equipment != null && Player.LocalPlayer.equipment.useable is UseableGun gun && gun.isInspectingAttachments)
+					{
+						gun.CloseAttachments();
+					}
 					else if (canOpenMenus)
 					{
 						PlayerLifeUI.close();
