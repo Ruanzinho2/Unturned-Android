@@ -303,6 +303,14 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 				}
 
 				connection = Steamworks.SteamNetworkingSockets.ConnectByIPAddress(ref address, configArray.Length, configArray);
+				if (connection == HSteamNetConnection.Invalid)
+				{
+					Log("Client failed to establish connection handle (HSteamNetConnection.Invalid)!");
+				}
+				else
+				{
+					Log("Client created connection handle: {0}", connection);
+				}
 			}
 			else
 			{

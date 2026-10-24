@@ -2,6 +2,13 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
+namespace AOT {
+    [AttributeUsage(AttributeTargets.Method)]
+    public sealed class MonoPInvokeCallbackAttribute : Attribute {
+        public MonoPInvokeCallbackAttribute(Type type) {}
+    }
+}
+
 namespace Steamworks {
     /// <summary>
     /// P/Invoke bindings to Valve's open-source libGameNetworkingSockets.so for Android ARM64.
@@ -62,6 +69,7 @@ namespace Steamworks {
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void SteamAPI_ISteamNetworkingSockets_RunCallbacks(IntPtr self);
 
+        [AOT.MonoPInvokeCallback(typeof(FnSteamNetConnectionStatusChanged))]
         private static void OnNativeConnectionStatusChanged(IntPtr pInfo) {
             try {
                 if (pInfo != IntPtr.Zero) {
@@ -76,6 +84,7 @@ namespace Steamworks {
             }
         }
 
+        [AOT.MonoPInvokeCallback(typeof(FnSteamNetAuthenticationStatusChanged))]
         private static void OnNativeAuthenticationStatusChanged(IntPtr pInfo) {
             try {
                 if (pInfo != IntPtr.Zero) {
@@ -101,19 +110,24 @@ namespace Steamworks {
                     isAvailable = (interfacePtr != IntPtr.Zero);
 
                     if (interfaceUtilsPtr != IntPtr.Zero) {
-                        statusChangedCallbackDelegate = OnNativeConnectionStatusChanged;
-                        IntPtr fnStatus = Marshal.GetFunctionPointerForDelegate(statusChangedCallbackDelegate);
-                        SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetConnectionStatusChanged(interfaceUtilsPtr, fnStatus);
+                        try {
+                            statusChangedCallbackDelegate = OnNativeConnectionStatusChanged;
+                            IntPtr fnStatus = Marshal.GetFunctionPointerForDelegate(statusChangedCallbackDelegate);
+                            SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetConnectionStatusChanged(interfaceUtilsPtr, fnStatus);
 
-                        authChangedCallbackDelegate = OnNativeAuthenticationStatusChanged;
-                        IntPtr fnAuth = Marshal.GetFunctionPointerForDelegate(authChangedCallbackDelegate);
-                        SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetAuthenticationStatusChanged(interfaceUtilsPtr, fnAuth);
+                            authChangedCallbackDelegate = OnNativeAuthenticationStatusChanged;
+                            IntPtr fnAuth = Marshal.GetFunctionPointerForDelegate(authChangedCallbackDelegate);
+                            SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetAuthenticationStatusChanged(interfaceUtilsPtr, fnAuth);
 
-                        SteamShimLogger.Info("[SteamNetworkingSockets] Native global status and auth callbacks registered.");
+                            SteamShimLogger.Info("[SteamNetworkingSockets] Native global status and auth callbacks registered.");
+                        } catch (Exception cbEx) {
+                            SteamShimLogger.Warn($"[SteamNetworkingSockets] Callback registration note: {cbEx.Message}");
+                        }
                     }
                     SteamShimLogger.Info($"[SteamNetworkingSockets] Initialized successfully. interfacePtr={interfacePtr} utilsPtr={interfaceUtilsPtr}");
                 } else {
                     SteamShimLogger.Error($"[SteamNetworkingSockets] GameNetworkingSockets_Init failed: {err}");
+                    isAvailable = false;
                 }
             } catch (Exception ex) {
                 SteamShimLogger.Error($"[SteamNetworkingSockets] EnsureInitialized exception: {ex}");

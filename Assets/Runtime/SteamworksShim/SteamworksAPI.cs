@@ -2234,22 +2234,16 @@ namespace Steamworks {
 
     public static class SteamMatchmaking {
         public static int GetFavoriteGameCount() {
-            return 0;
+            return SteamFavoritesManager.GetCount();
         }
         public static bool GetFavoriteGame(int iGame, out AppId_t pnAppID, out uint pnIP, out ushort pnConnPort, out ushort pnQueryPort, out uint punFlags, out uint pRTime32LastPlayedOnServer) {
-            pnAppID = default;
-            pnIP = default;
-            pnConnPort = default;
-            pnQueryPort = default;
-            punFlags = default;
-            pRTime32LastPlayedOnServer = default;
-            return false;
+            return SteamFavoritesManager.GetFavoriteGame(iGame, out pnAppID, out pnIP, out pnConnPort, out pnQueryPort, out punFlags, out pRTime32LastPlayedOnServer);
         }
         public static int AddFavoriteGame(AppId_t nAppID, uint nIP, ushort nConnPort, ushort nQueryPort, uint unFlags, uint rTime32LastPlayedOnServer) {
-            return 0;
+            return SteamFavoritesManager.AddFavoriteGame(nAppID, nIP, nConnPort, nQueryPort, unFlags, rTime32LastPlayedOnServer);
         }
         public static bool RemoveFavoriteGame(AppId_t nAppID, uint nIP, ushort nConnPort, ushort nQueryPort, uint unFlags) {
-            return false;
+            return SteamFavoritesManager.RemoveFavoriteGame(nAppID, nIP, nConnPort, nQueryPort, unFlags);
         }
         public static SteamAPICall_t RequestLobbyList() {
             return SteamAPICall_t.Invalid;
@@ -2376,7 +2370,7 @@ namespace Steamworks {
             return SteamMasterServerQuery.RequestInternetServerList(iApp, ppchFilters, nFilters, pRequestServersResponse);
         }
         public static HServerListRequest RequestFavoritesServerList(AppId_t iApp, MatchMakingKeyValuePair_t[] ppchFilters, uint nFilters, ISteamMatchmakingServerListResponse pRequestServersResponse) {
-            return SteamMasterServerQuery.RequestInternetServerList(iApp, ppchFilters, nFilters, pRequestServersResponse);
+            return SteamMasterServerQuery.RequestFavoritesServerList(iApp, ppchFilters, nFilters, pRequestServersResponse);
         }
         public static HServerListRequest RequestHistoryServerList(AppId_t iApp, MatchMakingKeyValuePair_t[] ppchFilters, uint nFilters, ISteamMatchmakingServerListResponse pRequestServersResponse) {
             return SteamMasterServerQuery.RequestInternetServerList(iApp, ppchFilters, nFilters, pRequestServersResponse);

@@ -20,6 +20,10 @@ namespace Steamworks {
 
         // Curated directory of active, popular Unturned PC dedicated servers across multiple regions (US, EU, BR, LatAm)
         private static readonly (string ip, ushort queryPort, ushort connPort)[] DefaultServerDirectory = new (string, ushort, ushort)[] {
+            // Confirmed Active Brazilian Servers
+            ("104.234.224.237", 28036, 28037), // [RP][BR] VANILANDIA MEDIEVAL ROLEPLAY | BRASIL
+            ("152.67.60.14", 27015, 27016),   // [BR] EPICOS BRASIL | VANILLA | [RUSSIA]
+
             // Pandahut Networks (US-East, EU, Vanilla, Arid)
             ("51.81.51.129", 27016, 27015),
             ("51.81.48.24", 27016, 27015),
@@ -121,6 +125,24 @@ namespace Steamworks {
             return handle;
         }
 
+        public static HServerListRequest RequestFavoritesServerList(AppId_t iApp, MatchMakingKeyValuePair_t[] ppchFilters, uint nFilters, ISteamMatchmakingServerListResponse response) {
+            IntPtr ptr = new IntPtr(Interlocked.Increment(ref nextRequestId));
+            HServerListRequest handle = new HServerListRequest(ptr);
+
+            ServerListContext ctx = new ServerListContext {
+                Handle = handle,
+                Response = response,
+                IsRefreshing = true
+            };
+            activeRequests[ptr] = ctx;
+
+            Task.Run(async () => {
+                await QueryFavoritesServers(ctx, iApp.m_AppId);
+            }, ctx.Cts.Token);
+
+            return handle;
+        }
+
         public static HServerListRequest RequestLANServerList(AppId_t iApp, ISteamMatchmakingServerListResponse response) {
             IntPtr ptr = new IntPtr(Interlocked.Increment(ref nextRequestId));
             HServerListRequest handle = new HServerListRequest(ptr);
@@ -171,42 +193,76 @@ namespace Steamworks {
             return false;
         }
 
+        private static async Task QueryFavoritesServers(ServerListContext ctx, uint appId) {
+            SteamShimLogger.Info("[SteamMasterServer] Starting Favorites Server discovery...");
+            try {
+                var endpointsToQuery = SteamFavoritesManager.GetAllFavoriteEndpoints();
+                SteamShimLogger.Info($"[SteamMasterServer] Querying {endpointsToQuery.Count} favorite/bookmark endpoints...");
+
+                using (SemaphoreSlim semaphore = new SemaphoreSlim(8)) {
+                    List<Task> queryTasks = new List<Task>();
+                    foreach (var (ip, qPort, cPort) in endpointsToQuery) {
+                        if (ctx.Cts.IsCancellationRequested) break;
+                        queryTasks.Add(Task.Run(async () => {
+                            await semaphore.WaitAsync(ctx.Cts.Token);
+                            try {
+                                if (ctx.Cts.IsCancellationRequested) return;
+                                var server = await QuerySingleServerA2S(ip, qPort, cPort, ctx.Cts.Token);
+                                if (server != null && !ctx.Cts.IsCancellationRequested) {
+                                    int sIdx;
+                                    lock (ctx.LockObj) {
+                                        sIdx = ctx.Servers.Count;
+                                        ctx.Servers.Add(server);
+                                    }
+                                    SteamShimLogger.Info($"[SteamMasterServer] Favorite server responded #{sIdx}: '{server.GetServerName()}' | Map: {server.GetMap()} | Players: {server.m_nPlayers}/{server.m_nMaxPlayers} | Ping: {server.m_nPing}ms");
+                                    A2SPingQuery.EnqueueAction(() => {
+                                        ctx.Response?.m_ServerResponded?.Invoke(ctx.Handle, sIdx);
+                                    });
+                                }
+                            } catch { }
+                            finally {
+                                semaphore.Release();
+                            }
+                        }));
+                    }
+                    await Task.WhenAll(queryTasks);
+                }
+            } catch (Exception ex) {
+                SteamShimLogger.Error($"[SteamMasterServer] QueryFavoritesServers exception: {ex}");
+            } finally {
+                ctx.IsRefreshing = false;
+                SteamShimLogger.Info($"[SteamMasterServer] QueryFavoritesServers finished. Total servers responded: {ctx.Servers.Count}");
+                A2SPingQuery.EnqueueAction(() => {
+                    var code = ctx.Servers.Count > 0 ? EMatchMakingServerResponse.eServerResponded : EMatchMakingServerResponse.eNoServersListedOnMasterServer;
+                    ctx.Response?.m_RefreshComplete?.Invoke(ctx.Handle, code);
+                });
+            }
+        }
+
         private static async Task QueryInternetServers(ServerListContext ctx, uint appId) {
             SteamShimLogger.Info("[SteamMasterServer] Starting Internet Server discovery...");
             try {
                 // Collect target endpoints to query
                 List<(IPAddress ip, ushort queryPort, ushort connPort)> endpointsToQuery = new List<(IPAddress, ushort, ushort)>();
+                HashSet<string> seen = new HashSet<string>();
 
                 // 1. Add Default Server Directory
                 foreach (var (sIp, sQueryPort, sConnPort) in DefaultServerDirectory) {
                     if (IPAddress.TryParse(sIp, out var parsed)) {
-                        endpointsToQuery.Add((parsed, sQueryPort, sConnPort));
-                        if (sQueryPort != sConnPort) {
-                            endpointsToQuery.Add((parsed, sConnPort, sConnPort));
+                        string key = $"{parsed}:{sQueryPort}";
+                        if (seen.Add(key)) {
+                            endpointsToQuery.Add((parsed, sQueryPort, sConnPort));
                         }
                     }
                 }
 
-                // 2. Check for custom user-configured servers file (Cloud/CustomServers.txt)
+                // 2. Add all saved favorites and bookmarks
                 try {
-                    string[] searchPaths = new string[] {
-                        "/storage/emulated/0/Android/data/com.SmartlyDressedGames.Unturned/files/Cloud/CustomServers.txt",
-                        "/storage/emulated/0/Android/data/com.SmartlyDressedGames.Unturned/files/CustomServers.txt"
-                    };
-                    foreach (var path in searchPaths) {
-                        if (File.Exists(path)) {
-                            foreach (var line in File.ReadAllLines(path)) {
-                                var trimmed = line.Trim();
-                                if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("#")) continue;
-                                var parts = trimmed.Split(':');
-                                if (parts.Length >= 2 && IPAddress.TryParse(parts[0], out var customIp) && ushort.TryParse(parts[1], out var customPort)) {
-                                    ushort cQueryPort = (parts.Length >= 3 && ushort.TryParse(parts[2], out var qp)) ? qp : (ushort)(customPort + 1);
-                                    endpointsToQuery.Add((customIp, cQueryPort, customPort));
-                                    if (cQueryPort != customPort) {
-                                        endpointsToQuery.Add((customIp, customPort, customPort));
-                                    }
-                                }
-                            }
+                    var favEndpoints = SteamFavoritesManager.GetAllFavoriteEndpoints();
+                    foreach (var (fIp, fQPort, fCPort) in favEndpoints) {
+                        string key = $"{fIp}:{fQPort}";
+                        if (seen.Add(key)) {
+                            endpointsToQuery.Add((fIp, fQPort, fCPort));
                         }
                     }
                 } catch { }
@@ -318,7 +374,7 @@ namespace Steamworks {
                     await client.SendAsync(req, req.Length);
 
                     var receiveTask = client.ReceiveAsync();
-                    var delayTask = Task.Delay(1500, ct);
+                    var delayTask = Task.Delay(2000, ct);
                     if (await Task.WhenAny(receiveTask, delayTask) != receiveTask) return null;
 
                     var res = await receiveTask;
@@ -333,7 +389,7 @@ namespace Steamworks {
                         watch.Restart();
                         await client.SendAsync(challengeReq, challengeReq.Length);
                         receiveTask = client.ReceiveAsync();
-                        delayTask = Task.Delay(1500, ct);
+                        delayTask = Task.Delay(2000, ct);
                         if (await Task.WhenAny(receiveTask, delayTask) != receiveTask) return null;
                         res = await receiveTask;
                         data = res.Buffer;
