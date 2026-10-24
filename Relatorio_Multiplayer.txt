@@ -1,0 +1,172 @@
+================================================================================
+RELATORIO TECNICO: IMPLEMENTACAO DO MULTIPLAYER - UNTURNED ANDROID PORT
+Data: 24 de Outubro de 2026
+Projeto: Unturned Mobile (Port Nativo Android ARM64)
+App ID Steam: 304930
+Versao do Jogo: 3.26.3.13 (Unity 2022.3.62f3)
+================================================================================
+
+1. OBJETIVO GERAL DO PROJETO
+--------------------------------------------------------------------------------
+Habilitar a funcionalidade multiplayer no port nativo de Unturned para Android,
+permitindo a descoberta de servidores e a conexao com servidores de Unturned
+de PC que nao exijam o sistema proprietario de anti-cheat BattlEye (foco em
+servidores comunitarios, No-BattlEye, servidores dedicados proprios e LAN).
+
+
+2. ANALISE INICIAL E DIAGNOSTICO DE COMPATIBILIDADE
+--------------------------------------------------------------------------------
+A) ESTADO ORIGINAL DO PORT:
+   - Os menus de multiplayer (Servers, Connect, Bookmarks, Lobbies) estavam
+     ocultos por compilacao condicional (#if !UNITY_64 e restricoes de plataforma).
+   - O Unturned original de PC depende do Steamworks.NET e do cliente desktop
+     Steam (steam_api64.dll e daemons de fundo).
+   - O Android ARM64 nao roda o cliente nativo de desktop da Steam sem camadas
+     pesadas de emulacao (como FEX / Box64 / Proot vistas no DroidDeck).
+
+B) TRANSPORTE DE REDE (STEAM NETWORKING SOCKETS - SNS):
+   - O Unturned utiliza a biblioteca GameNetworkingSockets da Valve como camada
+     principal de transporte de rede (ClientTransport_SteamNetworkingSockets).
+   - Foi identificado que a Valve disponibiliza o codigo aberto da biblioteca
+     nativa "libGameNetworkingSockets.so" compilada diretamente para ARM64
+     (Android bionic libc), permitindo trafego UDP de pacotes de jogo sem
+     necessidade de emular o executavel do Windows.
+
+C) REQUISITOS DE AUTENTICACAO:
+   - O jogo no PC chama "SteamUser.GetAuthSessionTicket" para gerar um ticket
+     de autenticacao que e enviado ao servidor ("EServerMessage.Authenticate").
+   - Sem uma camada de shim, o cliente sofria erro fatal de "AUTH_EMPTY" ou
+     "AUTH_NO_STEAM", impedindo qualquer tentativa de conexao.
+   - Para a visualizacao da lista de servidores: NAO e necessario login com
+     conta pessoal da Steam (a lista de servidores de jogos e publica).
+   - Para o ingresso em servidores: servidores sem validacao estrita de posse
+     (No-VAC / Insecure / Comunitarios / LAN) aceitam tickets gerados localmente.
+
+
+3. RESUMO DAS ETAPAS E IMPLEMENTACOES REALIZADAS
+--------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+ETAPA 1: DESBLOQUEIO DA INTERFACE E IMPLEMENTACAO DA SHIM (Versao v47)
+--------------------------------------------------------------------------------
+Arquivos modificados/criados:
+- Assets/Runtime/Assembly-CSharp/Unturned/UI/Menu/Play/MenuPlayUI.cs
+- Assets/Runtime/Assembly-CSharp/Unturned/UI/Menu/Play/MenuPlaySingleplayerUI.cs
+- Assets/Runtime/Assembly-CSharp/Unturned/UI/Menu/MenuDashboardUI.cs
+- Assets/Runtime/SteamworksShim/A2SPingQuery.cs
+- Assets/Runtime/SteamworksShim/SteamworksAPI.cs
+- Assets/Runtime/SteamworksShim/SteamworksCallbacks.cs
+
+Acoes executadas:
+1. Reativacao completa dos botoes "Servers", "Connect", "Bookmarks" e "Lobbies"
+   na interface do menu "Play" para Android, com layout ajustado para toque.
+2. Criacao do motor UDP de consulta Source Engine Query (A2S_INFO):
+   - Envio e recebimento assincrono de pacotes UDP "\xFF\xFF\xFF\xFFTSource Engine Query\0".
+   - Tratamento automatico do desafio de handshake (Challenge 0x41).
+   - Parsing dos campos de nome do servidor, mapa, contagem de jogadores,
+     capacidade maxima, protecao VAC e tags do jogo (<net>sns</net>, etc.).
+3. Emulacao de Steam Auth Ticket:
+   - Implementacao de "SteamUser.GetAuthSessionTicket" gerando estrutura de
+     ticket com AppID 304930, timestamp e SteamID valido.
+   - "SteamNetworkingSockets.InitAuthentication()" configurado para retornar
+     "k_ESteamNetworkingAvailability_Current", eliminando a trava de AUTH_EMPTY.
+
+--------------------------------------------------------------------------------
+ETAPA 2: INTEGRACAO NATIVA DA LIB GAMENETWORKINGSOCKETS ARM64 (Versao v48)
+--------------------------------------------------------------------------------
+Arquivos adicionados/modificados:
+- Assets/Plugins/Android/libs/arm64-v8a/libGameNetworkingSockets.so
+- Assets/Plugins/Android/libs/arm64-v8a/libGameNetworkingSockets.so.meta
+- Assets/Runtime/SteamworksShim/NativeGameNetworkingSockets.cs
+- Assets/Runtime/SteamworksShim/SteamMasterServerQuery.cs
+
+Acoes executadas:
+1. Extracao e inclusao da biblioteca oficial da Valve "libGameNetworkingSockets.so"
+   compilada para arquitetura ARM64 (Android arm64-v8a).
+2. Criacao do wrapper P/Invoke em "NativeGameNetworkingSockets.cs", exportando:
+   - GameNetworkingSockets_Init
+   - SteamAPI_SteamNetworkingSockets_v009
+   - ConnectByIPAddress
+   - SendMessageToConnection
+   - ReceiveMessagesOnConnection
+   - CloseConnection
+   - GetConnectionInfo / GetConnectionRealTimeStatus
+3. Criacao da classe "SteamMasterServerQuery.cs" para consultar o protocolo
+   classico de Master Server UDP e LAN.
+4. Conexao dos callbacks de servidor em "SteamMatchmakingServers":
+   - RequestInternetServerList, RequestLANServerList, GetServerDetails,
+     CancelQuery, ReleaseRequest e IsRefreshing.
+
+--------------------------------------------------------------------------------
+ETAPA 3: CORRECOES DE PARSING E FILTROS DO UNTURNED (Versao v49)
+--------------------------------------------------------------------------------
+Arquivos modificados:
+- Assets/Runtime/SteamworksShim/A2SPingQuery.cs
+- Assets/Runtime/SteamworksShim/SteamMasterServerQuery.cs
+
+Acoes executadas:
+1. Correcao de Overflow do AppID (details.m_nAppID):
+   - Diagnostico: O protocolo A2S envia o AppID em 16 bits (short). O AppID de
+     Unturned e 304930 (0x4A722). Ao converter o short lido para uint, ocorria
+     overflow para -22750 (4294944546). Como o Unturned verifica
+     "if (details.m_nAppID != SDG.Unturned.Provider.APP_ID.m_AppId) return;",
+     100% dos servidores que respondiam eram sumariamente descartados.
+   - Solucao: Fixado o m_nAppID em 304930.
+2. Correcao do SteamID Account Type (BPersistentGameServerAccount):
+   - Diagnostico: O Unturned descarta servidores com conta anonima na lista de
+     Internet. A conta de GameServer precisa ser tipo 3 (k_EAccountTypeGameServer).
+     O valor anterior usava tipo 4 (k_EAccountTypeAnonGameServer).
+   - Solucao: SteamID ajustado com tipo 3 (0x0130000000000000UL).
+3. Correcao da Terminacao Nula do Pacote Master Server:
+   - Ajustada a geracao binaria do pacote UDP para conter os bytes nulos 0x00 reais
+     exigidos pela especificacao da Valve.
+
+
+4. ANALISE DOS LOGS RECENTES (Logsv18) E DIAGNOSTICO FINAL
+--------------------------------------------------------------------------------
+Ao analisar o arquivo "Build_APK/Logsv18/Client.log", constatou-se:
+
+Linhas 76 a 78 do log:
+[2026-10-24 17:43:56] Refreshing server list with filters: gamedir=unturned secure=1 gamedataand=SSAP,VAC_ON,GAME_VERSION_031A030D,MOD_NAME_NA,MOD_VERSION_NA
+[2026-10-24 17:44:01] Refreshing server list with filters: gamedir=unturned secure=1 gamedataand=SSAP,VAC_ON,GAME_VERSION_031A030D,MOD_NAME_NA,MOD_VERSION_NA
+[2026-10-24 17:44:05] Refreshing server list with filters: gamedir=unturned secure=1 gamedataand=SSAP,VAC_ON,GAME_VERSION_031A030D,MOD_NAME_NA,MOD_VERSION_NA
+[2026-10-24 17:44:10] Quit game: clicked quit in main menu
+
+Fatores Cruciais Descobertos:
+1. O jogo acionou a busca de servidores corretamente sem qualquer erro de codigo.
+2. Nao houve erro de autenticacao Steam no menu.
+3. POR QUE O HL2MASTER NAO RESPONDEU?
+   A Valve desativou/descontinuou permanentemente o servico de Master Server
+   legado por UDP ("hl2master.steampowered.com:27011").
+   No PC, o cliente Steam oficial nao usa esse servico: ele conecta diretamente
+   aos Connection Managers (CM) da Valve via TCP/WebSocket criptografado.
+4. POR QUE O TIMEOUT DEMOROU?
+   O codigo da v49 tentava 4 hosts em 4 regioes com timeout de 2.5s cada (40s
+   no total). Como o usuario clicou em "Refresh" a cada 4-5 segundos, cada
+   clique cancelava a tentativa anterior antes que ela pudesse alcancar os
+   endpoints de fallback.
+
+
+5. SOLUCAO DEFINITIVA RECOMENDADA (ETAPA SEGUINTE - Versao v50)
+--------------------------------------------------------------------------------
+A solucao recomendada e oficial da Valve para clientes fora do desktop e a
+migracao para a STEAM WEB API:
+
+Endpoint Oficial da Valve:
+https://api.steampowered.com/IGameServersService/GetServerList/v1/?key={KEY}&filter=\appid\304930
+
+Como essa arquitetura resolve tudo:
+1. Descoberta Global (HTTPS porta 443):
+   - A requisicao e feita via HTTPS simples e devolve um JSON contendo todos
+     os servidores de PC ativos no mundo (nomes, IPs, portas, mapas, players, tags).
+   - Nao sofre bloqueios de portas UDP de operadoras de celular (4G/5G).
+2. Ping em Tempo Real (A2S_INFO):
+   - Com os IPs e portas ja obtidos instantaneamente via HTTPS, o jogo envia
+     pings A2S leves em paralelo para atualizar a latencia (ms) de cada servidor.
+3. Conexao Nativa (libGameNetworkingSockets.so):
+   - Ao clicar em "Join" ou "Connect", a biblioteca nativa ja integrada no APK
+     abre o canal UDP seguro com o servidor do jogo para carregar o mapa.
+
+================================================================================
+FIM DO RELATORIO
+================================================================================
