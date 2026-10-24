@@ -103,13 +103,28 @@ namespace Steamworks {
             return false;
         }
 
+        private static byte[] BuildMasterQueryPacket(byte region, string seedIpPort, uint appId) {
+            using (MemoryStream ms = new MemoryStream()) {
+                ms.WriteByte(0x31); // Message type '1'
+                ms.WriteByte(region); // Region code (0xFF = All, 0x02 = South America, 0x00 = US East, etc.)
+                byte[] seed = Encoding.ASCII.GetBytes(seedIpPort);
+                ms.Write(seed, 0, seed.Length);
+                ms.WriteByte(0x00); // Null terminator for seed IP:Port
+                byte[] filter = Encoding.ASCII.GetBytes($"\\appid\\{appId}");
+                ms.Write(filter, 0, filter.Length);
+                ms.WriteByte(0x00); // Null terminator for filter string
+                return ms.ToArray();
+            }
+        }
+
         private static async Task QueryInternetServers(ServerListContext ctx, uint appId) {
             try {
                 List<(IPAddress ip, ushort port)> discoveredEndpoints = new List<(IPAddress, ushort)>();
+                byte[] regionsToTry = new byte[] { 0xFF, 0x02, 0x00, 0x03 };
 
                 // 1. Try querying Master Server for server endpoints
                 foreach (var (host, port) in MasterServers) {
-                    if (ctx.Cts.IsCancellationRequested) break;
+                    if (ctx.Cts.IsCancellationRequested || discoveredEndpoints.Count >= 80) break;
                     try {
                         IPAddress[] addresses;
                         if (IPAddress.TryParse(host, out var parsedIp)) {
@@ -124,34 +139,53 @@ namespace Steamworks {
                         using (UdpClient client = new UdpClient()) {
                             client.Connect(masterEp);
 
-                            // Master Server Request packet: \x31 \xFF "0.0.0.0:0\0" "\appid\<id>\0"
-                            byte[] reqBytes;
-                            using (MemoryStream ms = new MemoryStream()) {
-                                ms.WriteByte(0x31);
-                                ms.WriteByte(0xFF); // Region: All
-                                byte[] seed = Encoding.ASCII.GetBytes("0.0.0.0:0\0");
-                                ms.Write(seed, 0, seed.Length);
-                                byte[] filter = Encoding.ASCII.GetBytes($"\\appid\\{appId}\\0");
-                                ms.Write(filter, 0, filter.Length);
-                                reqBytes = ms.ToArray();
-                            }
+                            foreach (byte region in regionsToTry) {
+                                if (ctx.Cts.IsCancellationRequested || discoveredEndpoints.Count >= 80) break;
+                                string seed = "0.0.0.0:0";
+                                int batches = 0;
 
-                            await client.SendAsync(reqBytes, reqBytes.Length);
+                                while (batches < 3 && !ctx.Cts.IsCancellationRequested) {
+                                    byte[] reqBytes = BuildMasterQueryPacket(region, seed, appId);
+                                    await client.SendAsync(reqBytes, reqBytes.Length);
 
-                            var receiveTask = client.ReceiveAsync();
-                            var delayTask = Task.Delay(3500, ctx.Cts.Token);
-                            if (await Task.WhenAny(receiveTask, delayTask) == receiveTask) {
-                                var res = await receiveTask;
-                                byte[] data = res.Buffer;
+                                    var receiveTask = client.ReceiveAsync();
+                                    var delayTask = Task.Delay(2500, ctx.Cts.Token);
+                                    if (await Task.WhenAny(receiveTask, delayTask) != receiveTask) break;
 
-                                // Header: 0xFF 0xFF 0xFF 0xFF 0x66 0x0A
-                                if (data.Length >= 6 && data[0] == 0xFF && data[1] == 0xFF && data[2] == 0xFF && data[3] == 0xFF && data[4] == 0x66 && data[5] == 0x0A) {
-                                    for (int i = 6; i + 6 <= data.Length; i += 6) {
-                                        byte[] ipBytes = new byte[] { data[i], data[i + 1], data[i + 2], data[i + 3] };
-                                        ushort sPort = (ushort)((data[i + 4] << 8) | data[i + 5]);
-                                        if (ipBytes[0] == 0 && ipBytes[1] == 0 && ipBytes[2] == 0 && ipBytes[3] == 0 && sPort == 0) break;
-                                        discoveredEndpoints.Add((new IPAddress(ipBytes), sPort));
+                                    var res = await receiveTask;
+                                    byte[] data = res.Buffer;
+
+                                    // Header: 0xFF 0xFF 0xFF 0xFF 0x66 0x0A
+                                    if (data.Length >= 6 && data[0] == 0xFF && data[1] == 0xFF && data[2] == 0xFF && data[3] == 0xFF && data[4] == 0x66 && data[5] == 0x0A) {
+                                        int countThisBatch = 0;
+                                        string lastSeed = null;
+                                        for (int i = 6; i + 6 <= data.Length; i += 6) {
+                                            byte[] ipBytes = new byte[] { data[i], data[i + 1], data[i + 2], data[i + 3] };
+                                            ushort sPort = (ushort)((data[i + 4] << 8) | data[i + 5]);
+                                            if (ipBytes[0] == 0 && ipBytes[1] == 0 && ipBytes[2] == 0 && ipBytes[3] == 0 && sPort == 0) {
+                                                lastSeed = "0.0.0.0:0";
+                                                break;
+                                            }
+                                            var ep = (new IPAddress(ipBytes), sPort);
+                                            if (!discoveredEndpoints.Contains(ep)) {
+                                                discoveredEndpoints.Add(ep);
+                                            }
+                                            lastSeed = $"{ep.Item1}:{sPort}";
+                                            countThisBatch++;
+                                        }
+
+                                        batches++;
+                                        if (lastSeed == null || lastSeed == "0.0.0.0:0" || countThisBatch == 0) {
+                                            break;
+                                        }
+                                        seed = lastSeed;
+                                    } else {
+                                        break;
                                     }
+                                }
+
+                                if (discoveredEndpoints.Count >= 20) {
+                                    break;
                                 }
                             }
                         }
@@ -161,6 +195,31 @@ namespace Steamworks {
                         }
                     } catch {
                         // Try next master server fallback
+                    }
+                }
+
+                // Fallback: If Master Server UDP was blocked or rate limited by carrier NAT, query popular dedicated server endpoints
+                if (discoveredEndpoints.Count == 0 && !ctx.Cts.IsCancellationRequested) {
+                    var fallbackEndpoints = new (string ip, ushort port)[] {
+                        ("51.81.48.24", 27015),
+                        ("51.81.48.24", 27016),
+                        ("198.244.184.218", 27015),
+                        ("198.244.184.218", 27016),
+                        ("144.217.10.155", 27015),
+                        ("144.217.10.155", 27016),
+                        ("135.148.137.95", 27015),
+                        ("135.148.137.95", 27016),
+                        ("45.88.229.54", 27015),
+                        ("45.88.229.54", 27016),
+                        ("194.147.90.134", 27015),
+                        ("194.147.90.134", 27016),
+                        ("185.189.255.84", 27015),
+                        ("185.189.255.84", 27016)
+                    };
+                    foreach (var (fIp, fPort) in fallbackEndpoints) {
+                        if (IPAddress.TryParse(fIp, out var parsed)) {
+                            discoveredEndpoints.Add((parsed, fPort));
+                        }
                     }
                 }
 

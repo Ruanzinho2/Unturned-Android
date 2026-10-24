@@ -170,8 +170,15 @@ namespace Steamworks {
 
                     // If steamID is missing or anonymous, ensure it has a valid GameServer account type
                     // so Unturned does not ignore it on the internet list.
+                    // SteamID format: Universe Public (1) << 56 | AccountType GameServer (3) << 52
                     if (steamId == 0) {
-                        steamId = 0x0140000000000000UL | (ulong)unIP;
+                        steamId = 0x0130000000000000UL | (ulong)unIP;
+                    } else {
+                        // Ensure account type is GameServer (3) so BPersistentGameServerAccount() returns true
+                        ulong accType = (steamId >> 52) & 0xFul;
+                        if (accType != 3) {
+                            steamId = (steamId & ~(0xFul << 52)) | (3ul << 52);
+                        }
                     }
 
                     gameserveritem_t item = new gameserveritem_t();
@@ -180,7 +187,8 @@ namespace Steamworks {
                     item.SetMap(map);
                     item.SetGameDir(folder);
                     item.SetGameDescription(game);
-                    item.m_nAppID = (uint)appId;
+                    // Unturned AppID is 304930 (legacy 16-bit short overflows if cast directly)
+                    item.m_nAppID = 304930;
                     item.m_nPlayers = players;
                     item.m_nMaxPlayers = maxPlayers;
                     item.m_nBotPlayers = bots;
