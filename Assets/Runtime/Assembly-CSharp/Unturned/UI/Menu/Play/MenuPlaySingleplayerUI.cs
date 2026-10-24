@@ -61,7 +61,7 @@ namespace SDG.Unturned
 			active = true;
 
 			// Only show browse servers button if multiplayer warning has already been shown.
-#if UNITY_64
+#if UNITY_64 || UNITY_ANDROID
 			browseServersButton.IsVisible = !OptionsSettings.ShouldShowOnlineSafetyMenu;
 #endif
 
@@ -740,7 +740,7 @@ namespace SDG.Unturned
 			browseServersButton.OnClicked += onClickedBrowseServersButton;
 			container.AddChild(browseServersButton);
 
-#if !UNITY_64
+#if !UNITY_64 && !UNITY_ANDROID
 			browseServersButton.IsVisible = false;
 #endif // !UNITY_64
 

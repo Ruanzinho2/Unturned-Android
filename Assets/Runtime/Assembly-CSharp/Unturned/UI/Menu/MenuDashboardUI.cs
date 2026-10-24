@@ -1638,7 +1638,7 @@ namespace SDG.Unturned
 #endif
 
 			// Warning on 32-bit Windows that it cannot join multiplayer.
-#if !UNITY_64
+#if !UNITY_64 && !UNITY_ANDROID
 			ISleekBox architectureBox = Glazier.Get().CreateBox();
 			architectureBox.PositionOffset_X = 210;
 			architectureBox.PositionOffset_Y = mainHeaderOffset;

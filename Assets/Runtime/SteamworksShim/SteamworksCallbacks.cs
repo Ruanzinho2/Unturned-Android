@@ -52,7 +52,12 @@ namespace Steamworks {
     public class ISteamMatchmakingPingResponse {
         public delegate void ServerResponded(gameserveritem_t server);
         public delegate void ServerFailedToRespond();
-        public ISteamMatchmakingPingResponse(ServerResponded onServerResponded, ServerFailedToRespond onServerFailedToRespond) {}
+        public ServerResponded m_ServerResponded;
+        public ServerFailedToRespond m_ServerFailedToRespond;
+        public ISteamMatchmakingPingResponse(ServerResponded onServerResponded, ServerFailedToRespond onServerFailedToRespond) {
+            m_ServerResponded = onServerResponded;
+            m_ServerFailedToRespond = onServerFailedToRespond;
+        }
     }
 
     public class ISteamMatchmakingPlayersResponse {

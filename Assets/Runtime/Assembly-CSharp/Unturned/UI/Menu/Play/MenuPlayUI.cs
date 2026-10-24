@@ -230,7 +230,7 @@ namespace SDG.Unturned
 			centerFrame.SizeOffset_Y = verticalOffset;
 			centerFrame.PositionOffset_Y = -(verticalOffset / 2);
 
-#if !UNITY_64
+#if !UNITY_64 && !UNITY_ANDROID
 			lobbiesButton.IsVisible = false;
 			serversButton.IsVisible = false;
 			connectButton.IsVisible = false;

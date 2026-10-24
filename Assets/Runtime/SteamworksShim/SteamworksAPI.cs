@@ -1121,7 +1121,7 @@ namespace Steamworks {
             return false;
         }
         public static ESteamNetworkingAvailability InitAuthentication() {
-            return default;
+            return ESteamNetworkingAvailability.k_ESteamNetworkingAvailability_Current;
         }
         public static ESteamNetworkingAvailability GetAuthenticationStatus(out SteamNetAuthenticationStatus_t pDetails) {
             pDetails = default;
@@ -1188,7 +1188,7 @@ namespace Steamworks {
             return;
         }
         public static void RunCallbacks() {
-            return;
+            A2SPingQuery.RunCallbacks();
         }
         public static bool BeginAsyncRequestFakeIP(int nNumPorts) {
             return false;
@@ -2407,7 +2407,7 @@ namespace Steamworks {
             return;
         }
         public static HServerQuery PingServer(uint unIP, ushort usPort, ISteamMatchmakingPingResponse pRequestServersResponse) {
-            return default;
+            return A2SPingQuery.PingServer(unIP, usPort, pRequestServersResponse);
         }
         public static HServerQuery PlayerDetails(uint unIP, ushort usPort, ISteamMatchmakingPlayersResponse pRequestServersResponse) {
             return default;
@@ -2825,7 +2825,7 @@ namespace Steamworks {
             return false;
         }
         public static ESteamNetworkingAvailability InitAuthentication() {
-            return default;
+            return ESteamNetworkingAvailability.k_ESteamNetworkingAvailability_Current;
         }
         public static ESteamNetworkingAvailability GetAuthenticationStatus(out SteamNetAuthenticationStatus_t pDetails) {
             pDetails = default;
@@ -2892,7 +2892,7 @@ namespace Steamworks {
             return;
         }
         public static void RunCallbacks() {
-            return;
+            A2SPingQuery.RunCallbacks();
         }
         public static bool BeginAsyncRequestFakeIP(int nNumPorts) {
             return false;
@@ -3614,6 +3614,25 @@ namespace Steamworks {
             return 0;
         }
         public static HAuthTicket GetAuthSessionTicket(byte[] pTicket, int cbMaxTicket, out uint pcbTicket, ref SteamNetworkingIdentity pSteamNetworkingIdentity) {
+            if (pTicket != null && cbMaxTicket >= 128) {
+                using (var ms = new System.IO.MemoryStream(pTicket)) {
+                    using (var writer = new System.IO.BinaryWriter(ms)) {
+                        uint ticketLength = 128;
+                        writer.Write(ticketLength);
+                        writer.Write((uint)1); // Version
+                        ulong steamId = GetSteamID().m_SteamID;
+                        if (steamId == 0) steamId = 76561198000000000UL;
+                        writer.Write(steamId);
+                        writer.Write((uint)304930); // Unturned AppID
+                        writer.Write((uint)System.DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                        for (int i = 0; i < 104; i++) {
+                            writer.Write((byte)0xAA);
+                        }
+                        pcbTicket = ticketLength;
+                        return new HAuthTicket(1);
+                    }
+                }
+            }
             pcbTicket = default;
             return HAuthTicket.Invalid;
         }
@@ -3987,7 +4006,7 @@ namespace Steamworks {
             return;
         }
         public static void RunCallbacks() {
-            return;
+            A2SPingQuery.RunCallbacks();
         }
         public static bool IsSteamRunning() {
             return false;
@@ -4008,7 +4027,7 @@ namespace Steamworks {
             return;
         }
         public static void RunCallbacks() {
-            return;
+            A2SPingQuery.RunCallbacks();
         }
         public static void ReleaseCurrentThreadMemory() {
             return;
