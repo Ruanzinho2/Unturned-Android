@@ -96,6 +96,11 @@ namespace SDG.SteamworksProvider
 
 		public void intialize()
 		{
+			// Connect SteamShimLogger to UnturnedLog so all Steam/GNS logs appear in Client.log
+			Steamworks.SteamShimLogger.LogInfo = SDG.Unturned.UnturnedLog.info;
+			Steamworks.SteamShimLogger.LogWarn = SDG.Unturned.UnturnedLog.warn;
+			Steamworks.SteamShimLogger.LogError = SDG.Unturned.UnturnedLog.error;
+
 			if (!appInfo.isDedicated)
 			{
 				if (SteamAPI.RestartAppIfNecessary((AppId_t) appInfo.id))

@@ -172,7 +172,7 @@ namespace Steamworks {
         }
 
         private static async Task QueryInternetServers(ServerListContext ctx, uint appId) {
-            Console.WriteLine("[SteamShim] Starting Internet Server discovery...");
+            SteamShimLogger.Info("[SteamMasterServer] Starting Internet Server discovery...");
             try {
                 // Collect target endpoints to query
                 List<(IPAddress ip, ushort queryPort, ushort connPort)> endpointsToQuery = new List<(IPAddress, ushort, ushort)>();
@@ -181,6 +181,9 @@ namespace Steamworks {
                 foreach (var (sIp, sQueryPort, sConnPort) in DefaultServerDirectory) {
                     if (IPAddress.TryParse(sIp, out var parsed)) {
                         endpointsToQuery.Add((parsed, sQueryPort, sConnPort));
+                        if (sQueryPort != sConnPort) {
+                            endpointsToQuery.Add((parsed, sConnPort, sConnPort));
+                        }
                     }
                 }
 
@@ -199,13 +202,16 @@ namespace Steamworks {
                                 if (parts.Length >= 2 && IPAddress.TryParse(parts[0], out var customIp) && ushort.TryParse(parts[1], out var customPort)) {
                                     ushort cQueryPort = (parts.Length >= 3 && ushort.TryParse(parts[2], out var qp)) ? qp : (ushort)(customPort + 1);
                                     endpointsToQuery.Add((customIp, cQueryPort, customPort));
+                                    if (cQueryPort != customPort) {
+                                        endpointsToQuery.Add((customIp, customPort, customPort));
+                                    }
                                 }
                             }
                         }
                     }
                 } catch { }
 
-                Console.WriteLine($"[SteamShim] Querying {endpointsToQuery.Count} endpoints concurrently...");
+                SteamShimLogger.Info($"[SteamMasterServer] Querying {endpointsToQuery.Count} endpoints concurrently...");
 
                 // Execute concurrent queries with high parallelism and responsive 1500ms timeout
                 using (SemaphoreSlim semaphore = new SemaphoreSlim(16)) {
@@ -223,7 +229,7 @@ namespace Steamworks {
                                         sIdx = ctx.Servers.Count;
                                         ctx.Servers.Add(server);
                                     }
-                                    Console.WriteLine($"[SteamShim] Server responded #{sIdx}: {server.GetServerName()} | Map: {server.GetMap()} | Players: {server.m_nPlayers}/{server.m_nMaxPlayers} | Ping: {server.m_nPing}ms");
+                                    SteamShimLogger.Info($"[SteamMasterServer] Server responded #{sIdx}: '{server.GetServerName()}' | Map: {server.GetMap()} | Players: {server.m_nPlayers}/{server.m_nMaxPlayers} | Ping: {server.m_nPing}ms");
                                     A2SPingQuery.EnqueueAction(() => {
                                         ctx.Response?.m_ServerResponded?.Invoke(ctx.Handle, sIdx);
                                     });
@@ -238,10 +244,10 @@ namespace Steamworks {
                     await Task.WhenAll(queryTasks);
                 }
             } catch (Exception ex) {
-                Console.WriteLine($"[SteamShim] QueryInternetServers exception: {ex.Message}");
+                SteamShimLogger.Error($"[SteamMasterServer] QueryInternetServers exception: {ex}");
             } finally {
                 ctx.IsRefreshing = false;
-                Console.WriteLine($"[SteamShim] QueryInternetServers finished. Total servers responded: {ctx.Servers.Count}");
+                SteamShimLogger.Info($"[SteamMasterServer] QueryInternetServers finished. Total servers responded: {ctx.Servers.Count}");
                 A2SPingQuery.EnqueueAction(() => {
                     var code = ctx.Servers.Count > 0 ? EMatchMakingServerResponse.eServerResponded : EMatchMakingServerResponse.eNoServersListedOnMasterServer;
                     ctx.Response?.m_RefreshComplete?.Invoke(ctx.Handle, code);
@@ -250,7 +256,7 @@ namespace Steamworks {
         }
 
         private static async Task QueryLANServers(ServerListContext ctx, uint appId) {
-            Console.WriteLine("[SteamShim] Starting LAN Server discovery...");
+            SteamShimLogger.Info("[SteamMasterServer] Starting LAN Server discovery...");
             try {
                 ushort[] commonPorts = new ushort[] { 27015, 27016, 27017, 27018, 27019 };
                 List<IPAddress> targets = new List<IPAddress> { IPAddress.Broadcast, IPAddress.Loopback };
@@ -270,7 +276,7 @@ namespace Steamworks {
                                             sIdx = ctx.Servers.Count;
                                             ctx.Servers.Add(server);
                                         }
-                                        Console.WriteLine($"[SteamShim] LAN Server responded #{sIdx}: {server.GetServerName()}");
+                                        SteamShimLogger.Info($"[SteamMasterServer] LAN Server responded #{sIdx}: '{server.GetServerName()}'");
                                         A2SPingQuery.EnqueueAction(() => {
                                             ctx.Response?.m_ServerResponded?.Invoke(ctx.Handle, sIdx);
                                         });
@@ -285,7 +291,7 @@ namespace Steamworks {
                     await Task.WhenAll(tasks);
                 }
             } catch (Exception ex) {
-                Console.WriteLine($"[SteamShim] QueryLANServers exception: {ex.Message}");
+                SteamShimLogger.Error($"[SteamMasterServer] QueryLANServers exception: {ex}");
             } finally {
                 ctx.IsRefreshing = false;
                 A2SPingQuery.EnqueueAction(() => {

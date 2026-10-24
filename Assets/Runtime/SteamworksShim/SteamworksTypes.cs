@@ -2249,28 +2249,74 @@ namespace Steamworks
 		public const int k_cchMaxString = 48;
 
 		 // Set everything to zero.  E.g. [::]:0
-		public void Clear() { }
+		public void Clear() {
+			if (m_ipv6 == null || m_ipv6.Length != 16) {
+				m_ipv6 = new byte[16];
+			} else {
+				System.Array.Clear(m_ipv6, 0, 16);
+			}
+			m_port = 0;
+		}
 
 		// Return true if the IP is ::0.  (Doesn't check port.)
-		public bool IsIPv6AllZeros() { return false; }
+		public bool IsIPv6AllZeros() {
+			if (m_ipv6 == null) return true;
+			for (int i = 0; i < 16; ++i) {
+				if (m_ipv6[i] != 0) return false;
+			}
+			return true;
+		}
 
 		// Set IPv6 address.  IP is interpreted as bytes, so there are no endian issues.  (Same as inaddr_in6.)  The IP can be a mapped IPv4 address
-		public void SetIPv6(byte[] ipv6, ushort nPort) { m_port = nPort; }
+		public void SetIPv6(byte[] ipv6, ushort nPort) {
+			if (m_ipv6 == null || m_ipv6.Length != 16) m_ipv6 = new byte[16];
+			if (ipv6 != null && ipv6.Length >= 16) {
+				System.Array.Copy(ipv6, m_ipv6, 16);
+			}
+			m_port = nPort;
+		}
 
 		// Sets to IPv4 mapped address.  IP and port are in host byte order.
-		public void SetIPv4(uint nIP, ushort nPort) { m_port = nPort; }
+		public void SetIPv4(uint nIP, ushort nPort) {
+			if (m_ipv6 == null || m_ipv6.Length != 16) m_ipv6 = new byte[16];
+			else System.Array.Clear(m_ipv6, 0, 16);
+			m_ipv6[10] = 0xFF;
+			m_ipv6[11] = 0xFF;
+			m_ipv6[12] = (byte)((nIP >> 24) & 0xFF);
+			m_ipv6[13] = (byte)((nIP >> 16) & 0xFF);
+			m_ipv6[14] = (byte)((nIP >> 8) & 0xFF);
+			m_ipv6[15] = (byte)(nIP & 0xFF);
+			m_port = nPort;
+		}
 
 		// Return true if IP is mapped IPv4
-		public bool IsIPv4() { return true; }
+		public bool IsIPv4() {
+			return m_ipv6 != null && m_ipv6.Length >= 16 && m_ipv6[10] == 0xFF && m_ipv6[11] == 0xFF;
+		}
 
 		// Returns IP in host byte order (e.g. aa.bb.cc.dd as 0xaabbccdd).  Returns 0 if IP is not mapped IPv4.
-		public uint GetIPv4() { return 0; }
+		public uint GetIPv4() {
+			if (IsIPv4()) {
+				return ((uint)m_ipv6[12] << 24) | ((uint)m_ipv6[13] << 16) | ((uint)m_ipv6[14] << 8) | (uint)m_ipv6[15];
+			}
+			return 0;
+		}
 
 		// Set to the IPv6 localhost address ::1, and the specified port.
-		public void SetIPv6LocalHost(ushort nPort = 0) { m_port = nPort; }
+		public void SetIPv6LocalHost(ushort nPort = 0) {
+			if (m_ipv6 == null || m_ipv6.Length != 16) m_ipv6 = new byte[16];
+			else System.Array.Clear(m_ipv6, 0, 16);
+			m_ipv6[15] = 1;
+			m_port = nPort;
+		}
 
 		// Return true if this identity is localhost.  (Either IPv6 ::1, or IPv4 127.0.0.1)
-		public bool IsLocalHost() { return false; }
+		public bool IsLocalHost() {
+			if (m_ipv6 == null) return false;
+			if (IsIPv4()) return m_ipv6[12] == 127;
+			for (int i = 0; i < 15; ++i) if (m_ipv6[i] != 0) return false;
+			return m_ipv6[15] == 1;
+		}
 
 		/// Print to a string, with or without the port.  Mapped IPv4 addresses are printed
 		/// as dotted decimal (12.34.56.78), otherwise this will print the canonical
@@ -2279,11 +2325,35 @@ namespace Steamworks
 		/// to avoid truncation
 		///
 		/// See also SteamNetworkingIdentityRender
-		public void ToString(out string buf, bool bWithPort) { buf = string.Empty; }
+		public void ToString(out string buf, bool bWithPort) {
+			if (IsIPv4()) {
+				buf = $"{m_ipv6[12]}.{m_ipv6[13]}.{m_ipv6[14]}.{m_ipv6[15]}";
+				if (bWithPort) buf += $":{m_port}";
+			} else {
+				buf = bWithPort ? $"0.0.0.0:{m_port}" : "0.0.0.0";
+			}
+		}
 
 		/// Parse an IP address and optional port.  If a port is not present, it is set to 0.
 		/// (This means that you cannot tell if a zero port was explicitly specified.)
-		public bool ParseString(string pszStr) { return false; }
+		public bool ParseString(string pszStr) {
+			if (string.IsNullOrEmpty(pszStr)) return false;
+			try {
+				string[] parts = pszStr.Trim().Split(':');
+				string[] ipParts = parts[0].Split('.');
+				if (ipParts.Length == 4) {
+					byte b0 = byte.Parse(ipParts[0]);
+					byte b1 = byte.Parse(ipParts[1]);
+					byte b2 = byte.Parse(ipParts[2]);
+					byte b3 = byte.Parse(ipParts[3]);
+					uint nip = ((uint)b0 << 24) | ((uint)b1 << 16) | ((uint)b2 << 8) | (uint)b3;
+					ushort port = (parts.Length >= 2 && ushort.TryParse(parts[1], out var p)) ? p : (ushort)0;
+					SetIPv4(nip, port);
+					return true;
+				}
+			} catch { }
+			return false;
+		}
 
 		/// See if two addresses are identical
 		public bool Equals(SteamNetworkingIPAddr x) { return m_port == x.m_port; }
@@ -2429,7 +2499,15 @@ namespace Steamworks
 		/// k_cchMaxString bytes big to avoid truncation.
 		///
 		/// See also SteamNetworkingIPAddrRender
-		public void ToString(out string buf) { buf = string.Empty; }
+		public void ToString(out string buf) {
+			if (m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_SteamID) {
+				buf = $"[SteamID:{m_steamID64}]";
+			} else if (m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_IPAddress) {
+				buf = $"[IPAddress:{m_reserved[0]}.{m_reserved[1]}.{m_reserved[2]}.{m_reserved[3]}]";
+			} else {
+				buf = $"[Identity:{m_steamID64}]";
+			}
+		}
 
 		/// Parse back a string that was generated using ToString.  If we don't understand the
 		/// string, but it looks "reasonable" (it matches the pattern type:<type-data> and doesn't

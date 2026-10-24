@@ -14,15 +14,52 @@ namespace Steamworks {
         public static Callback<T> Create(DispatchDelegate func) => new Callback<T>(func, false);
         public static Callback<T> CreateGameServer(DispatchDelegate func) => new Callback<T>(func, true);
 
+        private static readonly List<Callback<T>> activeCallbacks = new List<Callback<T>>();
         private bool m_bGameServer;
+        public DispatchDelegate m_Func;
+
         public Callback(DispatchDelegate func, bool bGameServer = false) {
             m_bGameServer = bGameServer;
+            m_Func = func;
+            lock (activeCallbacks) {
+                activeCallbacks.Add(this);
+            }
         }
 
         public override bool IsGameServer => m_bGameServer;
-        public void Dispose() {}
-        public void Register(DispatchDelegate func) {}
-        public void Unregister() {}
+
+        public void Dispose() {
+            lock (activeCallbacks) {
+                activeCallbacks.Remove(this);
+            }
+        }
+
+        public void Register(DispatchDelegate func) {
+            m_Func = func;
+            lock (activeCallbacks) {
+                if (!activeCallbacks.Contains(this)) {
+                    activeCallbacks.Add(this);
+                }
+            }
+        }
+
+        public void Unregister() {
+            Dispose();
+        }
+
+        public static void Dispatch(T param) {
+            Callback<T>[] list;
+            lock (activeCallbacks) {
+                list = activeCallbacks.ToArray();
+            }
+            foreach (var cb in list) {
+                try {
+                    cb.m_Func?.Invoke(param);
+                } catch (Exception ex) {
+                    SteamShimLogger.Warn($"[Callback<{typeof(T).Name}>] Exception in callback: {ex.Message}");
+                }
+            }
+        }
     }
 
     public abstract class CallResult {}

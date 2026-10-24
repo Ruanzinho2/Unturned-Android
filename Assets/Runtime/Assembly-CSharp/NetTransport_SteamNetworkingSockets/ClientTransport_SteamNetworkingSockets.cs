@@ -244,6 +244,38 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 		private void OnUpdate()
 		{
 			LogDebugOutput();
+
+			if (connection != HSteamNetConnection.Invalid && !isConnected && !didCloseConnection)
+			{
+				if (Steamworks.SteamNetworkingSockets.GetConnectionInfo(connection, out SteamNetConnectionInfo_t info))
+				{
+					if (info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected)
+					{
+						Log("Client connection state verified as Connected via status poll (conn {0})", connection);
+						SteamNetConnectionStatusChangedCallback_t cb = default;
+						cb.m_hConn = connection;
+						cb.m_info = info;
+						cb.m_eOldState = ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connecting;
+						HandleState_Connected(ref cb);
+					}
+					else if (info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally)
+					{
+						Log("Client connection state problem detected via status poll (conn {0})", connection);
+						SteamNetConnectionStatusChangedCallback_t cb = default;
+						cb.m_hConn = connection;
+						cb.m_info = info;
+						HandleState_ProblemDetectedLocally(ref cb);
+					}
+					else if (info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer)
+					{
+						Log("Client connection closed by peer via status poll (conn {0})", connection);
+						SteamNetConnectionStatusChangedCallback_t cb = default;
+						cb.m_hConn = connection;
+						cb.m_info = info;
+						HandleState_ClosedByPeer(ref cb);
+					}
+				}
+			}
 		}
 
 		private void Connect()
@@ -267,7 +299,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 				else
 				{
 					address.SetIPv4(ipv4, Unturned.Provider.CurrentServerConnectParameters.connectionPort);
-					Log("Client connecting to {0}", AddressToString(address));
+					Log("Client connecting to {0} (IP: {1} Port: {2})", AddressToString(address), Unturned.Provider.CurrentServerConnectParameters.address, Unturned.Provider.CurrentServerConnectParameters.connectionPort);
 				}
 
 				connection = Steamworks.SteamNetworkingSockets.ConnectByIPAddress(ref address, configArray.Length, configArray);
