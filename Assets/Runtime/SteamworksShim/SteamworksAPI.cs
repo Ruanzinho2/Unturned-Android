@@ -1258,7 +1258,7 @@ namespace Steamworks {
             return default;
         }
         public static void SetDebugOutputFunction(ESteamNetworkingSocketsDebugOutputType eDetailLevel, FSteamNetworkingSocketsDebugOutput pfnFunc) {
-            return;
+            NativeGameNetworkingSockets.SetUserDebugOutputFunction(eDetailLevel, pfnFunc);
         }
         public static bool IsFakeIPv4(uint nIPv4) {
             return false;
@@ -2955,7 +2955,7 @@ namespace Steamworks {
             return default;
         }
         public static void SetDebugOutputFunction(ESteamNetworkingSocketsDebugOutputType eDetailLevel, FSteamNetworkingSocketsDebugOutput pfnFunc) {
-            return;
+            NativeGameNetworkingSockets.SetUserDebugOutputFunction(eDetailLevel, pfnFunc);
         }
         public static bool IsFakeIPv4(uint nIPv4) {
             return false;

@@ -243,6 +243,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 
 		private void OnUpdate()
 		{
+			Steamworks.SteamNetworkingSockets.RunCallbacks();
 			LogDebugOutput();
 
 			if (connection != HSteamNetConnection.Invalid && !isConnected && !didCloseConnection)

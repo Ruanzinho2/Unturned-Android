@@ -780,15 +780,7 @@ namespace SDG.Unturned
 			_steamID = data.m_steamID;
 			_ip = data.m_NetAdr.GetIP();
 			queryPort = data.m_NetAdr.GetQueryPort();
-			ushort reportedConnPort = data.m_NetAdr.GetConnectionPort();
-			if (reportedConnPort > 0)
-			{
-				connectionPort = reportedConnPort;
-			}
-			else
-			{
-				connectionPort = (ushort) (queryPort + 1);
-			}
+			connectionPort = (ushort) (queryPort + 1);
 
 			_name = data.GetServerName();
 
