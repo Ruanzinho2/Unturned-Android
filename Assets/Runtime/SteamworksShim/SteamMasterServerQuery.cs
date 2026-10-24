@@ -21,8 +21,8 @@ namespace Steamworks {
         // Curated directory of active, popular Unturned PC dedicated servers across multiple regions (US, EU, BR, LatAm)
         private static readonly (string ip, ushort queryPort, ushort connPort)[] DefaultServerDirectory = new (string, ushort, ushort)[] {
             // Confirmed Active Brazilian Servers
-            ("104.234.224.237", 28036, 28037), // [RP][BR] VANILANDIA MEDIEVAL ROLEPLAY | BRASIL
-            ("152.67.60.14", 27015, 27016),   // [BR] EPICOS BRASIL | VANILLA | [RUSSIA]
+            ("104.234.224.237", 28036, 28036), // [RP][BR] VANILANDIA MEDIEVAL ROLEPLAY | BRASIL
+            ("152.67.60.14", 27015, 27015),   // [BR] EPICOS BRASIL | VANILLA | [RUSSIA]
 
             // Pandahut Networks (US-East, EU, Vanilla, Arid)
             ("51.81.51.129", 27016, 27015),

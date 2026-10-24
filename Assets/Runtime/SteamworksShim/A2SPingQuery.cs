@@ -147,7 +147,7 @@ namespace Steamworks {
                     byte vac = reader.ReadByte();
                     string version = ReadNullTerminatedString(reader);
 
-                    ushort connectionPort = (ushort)(usQueryPort + 1);
+                    ushort connectionPort = usQueryPort;
                     ulong steamId = 0;
                     string tags = "";
 

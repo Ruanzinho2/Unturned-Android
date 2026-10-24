@@ -132,21 +132,18 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 
 			// Anything other than None logs quite a bit, so this was changed from Warning back to None.
 			// e.g. Issue #3406
-			return ESteamNetworkingSocketsDebugOutputType.k_ESteamNetworkingSocketsDebugOutputType_None;
+			return ESteamNetworkingSocketsDebugOutputType.k_ESteamNetworkingSocketsDebugOutputType_Msg;
 		}
 
 		protected virtual List<SteamNetworkingConfigValue_t> BuildDefaultConfig()
 		{
 			List<SteamNetworkingConfigValue_t> configList = new List<SteamNetworkingConfigValue_t>();
 
-			if (clAllowWithoutAuth)
-			{
-				SteamNetworkingConfigValue_t allowWithoutAuth = new SteamNetworkingConfigValue_t();
-				allowWithoutAuth.m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32;
-				allowWithoutAuth.m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth;
-				allowWithoutAuth.m_val.m_int32 = 1;
-				configList.Add(allowWithoutAuth);
-			}
+			SteamNetworkingConfigValue_t allowWithoutAuth = new SteamNetworkingConfigValue_t();
+			allowWithoutAuth.m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32;
+			allowWithoutAuth.m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth;
+			allowWithoutAuth.m_val.m_int32 = 2;
+			configList.Add(allowWithoutAuth);
 
 			if (clSendBufferSize.hasValue && clSendBufferSize.value > 0)
 			{
@@ -184,7 +181,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 		/// <summary>
 		/// Should certificate authentication be disabled for UDP connections?
 		/// </summary>
-		protected static CommandLineFlag clAllowWithoutAuth = new CommandLineFlag(false, "-SNS_AllowWithoutAuth");
+		protected static CommandLineFlag clAllowWithoutAuth = new CommandLineFlag(true, "-SNS_AllowWithoutAuth");
 
 		protected FSteamNetworkingSocketsDebugOutput GetDebugOutputFunction()
 		{

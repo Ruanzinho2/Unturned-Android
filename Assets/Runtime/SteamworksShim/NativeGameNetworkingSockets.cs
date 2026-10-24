@@ -49,6 +49,9 @@ namespace Steamworks {
         private static extern void SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetAuthenticationStatusChanged(IntPtr self, IntPtr fnCallback);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool SteamAPI_ISteamNetworkingUtils_SetConfigValue(IntPtr self, int eValue, int eScopeType, IntPtr scopeObj, int eDataType, ref int pArg);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern HSteamNetConnection SteamAPI_ISteamNetworkingSockets_ConnectByIPAddress(IntPtr self, ref SteamNetworkingIPAddr address, int nOptions, SteamNetworkingConfigValue_t[] pOptions);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
@@ -111,6 +114,14 @@ namespace Steamworks {
 
                     if (interfaceUtilsPtr != IntPtr.Zero) {
                         try {
+                            int allowWithoutAuthVal = 2;
+                            SteamAPI_ISteamNetworkingUtils_SetConfigValue(interfaceUtilsPtr, 23 /* k_ESteamNetworkingConfig_IP_AllowWithoutAuth */, 1 /* k_ESteamNetworkingConfig_Global */, IntPtr.Zero, 1 /* k_ESteamNetworkingConfig_Int32 */, ref allowWithoutAuthVal);
+                            SteamShimLogger.Info("[SteamNetworkingSockets] Global IP_AllowWithoutAuth set to 2.");
+                        } catch (Exception cfgEx) {
+                            SteamShimLogger.Warn($"[SteamNetworkingSockets] Global config note: {cfgEx.Message}");
+                        }
+
+                        try {
                             statusChangedCallbackDelegate = OnNativeConnectionStatusChanged;
                             IntPtr fnStatus = Marshal.GetFunctionPointerForDelegate(statusChangedCallbackDelegate);
                             SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetConnectionStatusChanged(interfaceUtilsPtr, fnStatus);
@@ -144,7 +155,18 @@ namespace Steamworks {
                     }
                     address.ToString(out string ipStr, true);
                     SteamShimLogger.Info($"[SteamNetworkingSockets] ConnectByIPAddress initiating connection to {ipStr}...");
-                    HSteamNetConnection conn = SteamAPI_ISteamNetworkingSockets_ConnectByIPAddress(interfacePtr, ref address, nOptions, pOptions);
+
+                    var optList = pOptions != null ? new System.Collections.Generic.List<SteamNetworkingConfigValue_t>(pOptions) : new System.Collections.Generic.List<SteamNetworkingConfigValue_t>();
+                    if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth)) {
+                        optList.Add(new SteamNetworkingConfigValue_t {
+                            m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth,
+                            m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
+                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 2 }
+                        });
+                    }
+                    var actualOpts = optList.ToArray();
+
+                    HSteamNetConnection conn = SteamAPI_ISteamNetworkingSockets_ConnectByIPAddress(interfacePtr, ref address, actualOpts.Length, actualOpts);
                     SteamShimLogger.Info($"[SteamNetworkingSockets] ConnectByIPAddress returned connection handle: {conn.m_HSteamNetConnection}");
                     return conn;
                 } catch (Exception ex) {

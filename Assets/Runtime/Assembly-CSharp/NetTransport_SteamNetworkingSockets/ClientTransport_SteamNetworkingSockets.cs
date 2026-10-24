@@ -258,6 +258,14 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 						cb.m_eOldState = ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connecting;
 						HandleState_Connected(ref cb);
 					}
+					else if (info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connecting)
+					{
+						if (UnityEngine.Time.realtimeSinceStartup - lastConnectingLogTime > 2f)
+						{
+							lastConnectingLogTime = UnityEngine.Time.realtimeSinceStartup;
+							Log("Client connection in progress (conn {0}, state Connecting, debug: '{1}')", connection, info.m_szEndDebug);
+						}
+					}
 					else if (info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally)
 					{
 						Log("Client connection state problem detected via status poll (conn {0})", connection);
@@ -628,6 +636,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 		private bool didCloseConnection;
 		private bool didSetupDebugOutput;
 		private bool isRemoteUsingFakeIP;
+		private float lastConnectingLogTime;
 
 		/// <summary>
 		/// Recycled array for every read call.

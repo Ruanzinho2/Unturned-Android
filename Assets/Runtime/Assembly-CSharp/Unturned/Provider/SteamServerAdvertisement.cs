@@ -780,9 +780,15 @@ namespace SDG.Unturned
 			_steamID = data.m_steamID;
 			_ip = data.m_NetAdr.GetIP();
 			queryPort = data.m_NetAdr.GetQueryPort();
-			// GetConnectionPort is not trustworthy because we pass queryPort as gamePort to GameServer.Init as a
-			// workaround because the legacy Steam server browser provides connection port rather than query port.
-			connectionPort = (ushort) (queryPort + 1);
+			ushort reportedConnPort = data.m_NetAdr.GetConnectionPort();
+			if (reportedConnPort > 0)
+			{
+				connectionPort = reportedConnPort;
+			}
+			else
+			{
+				connectionPort = (ushort) (queryPort + 1);
+			}
 
 			_name = data.GetServerName();
 
