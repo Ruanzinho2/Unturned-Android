@@ -2501,11 +2501,9 @@ namespace Steamworks
 		/// See also SteamNetworkingIPAddrRender
 		public void ToString(out string buf) {
 			if (m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_SteamID) {
-				buf = $"[SteamID:{m_steamID64}]";
-			} else if (m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_IPAddress) {
-				buf = $"[IPAddress:{m_reserved[0]}.{m_reserved[1]}.{m_reserved[2]}.{m_reserved[3]}]";
+				buf = $"[SteamID:{GetSteamID64()}]";
 			} else {
-				buf = $"[Identity:{m_steamID64}]";
+				buf = "[Identity]";
 			}
 		}
 
