@@ -755,7 +755,7 @@ PlayerSettings:
   apiCompatibilityLevelPerPlatform:
     Standalone: 3
   m_RenderingPath: 1
-  m_MobileRenderingPath: 1
+  m_MobileRenderingPath: 3
   metroPackageName: Unturned 3
   metroPackageVersion: 
   metroCertificatePath: 

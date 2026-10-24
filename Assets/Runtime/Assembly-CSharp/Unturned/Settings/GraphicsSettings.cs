@@ -987,7 +987,21 @@ namespace SDG.Unturned
 				MainCamera.instance.layerCullSpherical = true;
 #if UNITY_ANDROID
 				MainCamera.instance.nearClipPlane = 0.20f;
-				MainCamera.instance.depthTextureMode |= DepthTextureMode.Depth;
+				if (renderMode == ERenderMode.DEFERRED)
+				{
+					MainCamera.instance.depthTextureMode |= DepthTextureMode.Depth;
+				}
+				else
+				{
+					if (isAmbientOcclusionEnabled || sunShaftsQuality != EGraphicQuality.OFF)
+					{
+						MainCamera.instance.depthTextureMode |= DepthTextureMode.Depth;
+					}
+					else
+					{
+						MainCamera.instance.depthTextureMode = DepthTextureMode.None;
+					}
+				}
 #endif
 
 				if (Player.LocalPlayer != null)
@@ -1170,6 +1184,15 @@ namespace SDG.Unturned
 				UnturnedLog.info($"Reset UI scale (was {graphicsSettingsData.UserInterfaceScale})");
 				graphicsSettingsData.UserInterfaceScale = 1.0f;
 			}
+
+#if UNITY_ANDROID
+			if (!graphicsSettingsData.HasMigratedToDeferred)
+			{
+				graphicsSettingsData.RenderMode2 = ERenderMode.DEFERRED;
+				graphicsSettingsData.HasMigratedToDeferred = true;
+				UnturnedLog.info("Auto-migrated graphics render mode to Deferred on Android");
+			}
+#endif
 
 			fixDefaultResolution();
 		}

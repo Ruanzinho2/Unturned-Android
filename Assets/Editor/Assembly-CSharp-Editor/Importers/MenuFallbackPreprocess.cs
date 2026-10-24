@@ -9,8 +9,10 @@ using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
+using UnityEditor.Rendering;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 namespace SDG.Unturned
@@ -22,6 +24,31 @@ namespace SDG.Unturned
 		public void OnPreprocessBuild(BuildReport report)
 		{
 			Execute();
+			ConfigureAndroidGraphics();
+		}
+
+		[MenuItem("Unturned/Configure Android Graphics Settings")]
+		public static void ConfigureAndroidGraphics()
+		{
+			try
+			{
+				BuildTargetGroup targetGroup = BuildTargetGroup.Android;
+				GraphicsTier[] tiers = new GraphicsTier[] { GraphicsTier.Tier1, GraphicsTier.Tier2, GraphicsTier.Tier3 };
+
+				foreach (GraphicsTier tier in tiers)
+				{
+					TierSettings tierSettings = EditorGraphicsSettings.GetTierSettings(targetGroup, tier);
+					tierSettings.cascadedShadowMaps = false;
+					tierSettings.renderingPath = RenderingPath.DeferredShading;
+					EditorGraphicsSettings.SetTierSettings(targetGroup, tier, tierSettings);
+				}
+
+				Debug.Log("[MenuFallbackPreprocess] Successfully configured Android TierSettings: cascadedShadowMaps=false (disables Internal-ScreenSpaceShadows in Forward) and renderingPath=DeferredShading.");
+			}
+			catch (Exception ex)
+			{
+				Debug.LogWarning($"[MenuFallbackPreprocess] Exception configuring Android TierSettings: {ex}");
+			}
 		}
 
 		[MenuItem("Unturned/Fix Menu Fallback Meshes")]

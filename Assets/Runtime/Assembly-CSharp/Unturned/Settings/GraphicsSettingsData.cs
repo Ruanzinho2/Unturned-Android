@@ -63,6 +63,7 @@ namespace SDG.Unturned
 		public EGraphicQuality TerrainQuality { get; set; }
 		public ERenderMode RenderMode2;
 		public EGraphicQuality LandmarkQuality;
+		public bool HasMigratedToDeferred;
 
 		public GraphicsSettingsData()
 		{
@@ -116,7 +117,12 @@ namespace SDG.Unturned
 			this.ScopeQuality2 = EGraphicQuality.OFF;
 			this.OutlineQuality = EGraphicQuality.LOW;
 			this.TerrainQuality = EGraphicQuality.MEDIUM;
+#if UNITY_ANDROID
+			this.RenderMode2 = ERenderMode.DEFERRED;
+			this.HasMigratedToDeferred = true;
+#else
 			this.RenderMode2 = ERenderMode.FORWARD;
+#endif
 			this.LandmarkQuality = EGraphicQuality.OFF;
 		}
 	}
