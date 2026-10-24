@@ -78,12 +78,16 @@ namespace Keyneed.MobileController
 			}
 		}
 
+		public const float MIN_ACTIVATION_Y = 0.20f;
+		public const float MAX_ACTIVATION_Y = 0.75f;
+		public const float MAX_ACTIVATION_X = 0.45f;
+
 		private void Update()
 		{
 			if (ControllerManager.editMode) return;
 			if (joystickState == State.Un_Interactable) return;
 
-			if (RussianHUDBuilder.IsAnyUIOpen())
+			if (RussianHUDBuilder.IsAnyUIOpen() || RussianHUDBuilder.IsInVehicle())
 			{
 				if (_isDragging)
 				{
@@ -100,8 +104,11 @@ namespace Keyneed.MobileController
 					Touch t = Input.GetTouch(i);
 					if (!_isDragging)
 					{
-						// Left 45% of screen initiates joystick touch
-						if (t.phase == TouchPhase.Began && t.position.x < Screen.width * 0.45f)
+						// Middle vertical band on the left initiates joystick touch
+						if (t.phase == TouchPhase.Began &&
+						    t.position.x < Screen.width * MAX_ACTIVATION_X &&
+						    t.position.y >= Screen.height * MIN_ACTIVATION_Y &&
+						    t.position.y <= Screen.height * MAX_ACTIVATION_Y)
 						{
 							StartTouch(t.position, t.fingerId, null);
 							break;
@@ -130,7 +137,16 @@ namespace Keyneed.MobileController
 
 		public void OnPointerDown(PointerEventData eventData)
 		{
+			if (ControllerManager.editMode) return;
+			if (joystickState == State.Un_Interactable) return;
+			if (RussianHUDBuilder.IsAnyUIOpen() || RussianHUDBuilder.IsInVehicle()) return;
 			if (_isDragging && _activePointerId == eventData.pointerId) return;
+
+			if (eventData.position.y < Screen.height * MIN_ACTIVATION_Y || eventData.position.y > Screen.height * MAX_ACTIVATION_Y)
+			{
+				return;
+			}
+
 			StartTouch(eventData.position, eventData.pointerId, eventData.pressEventCamera);
 		}
 
@@ -150,7 +166,7 @@ namespace Keyneed.MobileController
 		{
 			if (ControllerManager.editMode) return;
 			if (joystickState == State.Un_Interactable) return;
-			if (RussianHUDBuilder.IsAnyUIOpen()) return;
+			if (RussianHUDBuilder.IsAnyUIOpen() || RussianHUDBuilder.IsInVehicle()) return;
 			if (_isDragging && _activePointerId != pointerId) return; // Prevent secondary touch hijacking
 
 			_isDragging = true;
@@ -189,7 +205,7 @@ namespace Keyneed.MobileController
 		private void UpdateDrag(Vector2 screenPos, Camera eventCamera)
 		{
 			if (!_isDragging) return;
-			if (RussianHUDBuilder.IsAnyUIOpen())
+			if (RussianHUDBuilder.IsAnyUIOpen() || RussianHUDBuilder.IsInVehicle())
 			{
 				ResetJoystick();
 				return;

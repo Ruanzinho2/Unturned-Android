@@ -129,12 +129,29 @@ namespace Keyneed.MobileController
 
 		private void Update()
 		{
-			if (m_Selected && RussianHUDBuilder.IsAnyUIOpen())
+			if (m_Selected)
 			{
-				bool isInventoryButton = RussianHUDBuilder.ShouldShowTabButton() && (keySimulate == KeyCode.Tab || gameObject.name == "Inventory");
-				if (!isInventoryButton)
+				if (RussianHUDBuilder.IsAnyUIOpen())
 				{
-					ResetButton();
+					bool isInventoryButton = RussianHUDBuilder.ShouldShowTabButton() && (keySimulate == KeyCode.Tab || gameObject.name == "Inventory");
+					if (!isInventoryButton)
+					{
+						ResetButton();
+					}
+				}
+				else if (RussianHUDBuilder.IsInVehicle())
+				{
+					if (m_Patterns != null && m_Patterns.m_ButtonPattern != ButtonPattern.Vehicle && !RussianHUDBuilder.IsGlobalButton(gameObject.name))
+					{
+						ResetButton();
+					}
+				}
+				else
+				{
+					if (m_Patterns != null && m_Patterns.m_ButtonPattern == ButtonPattern.Vehicle)
+					{
+						ResetButton();
+					}
 				}
 			}
 		}

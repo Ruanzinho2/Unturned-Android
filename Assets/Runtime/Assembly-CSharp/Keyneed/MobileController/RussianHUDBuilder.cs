@@ -53,6 +53,16 @@ namespace Keyneed.MobileController
 			return IsInventoryOpen() || IsWeaponInspectionOpen();
 		}
 
+		public static bool IsInVehicle()
+		{
+			return Player.player != null && Player.player.movement != null && Player.player.movement.getVehicle() != null;
+		}
+
+		public static bool IsGlobalButton(string name)
+		{
+			return name == "Inventory" || name == "Menu" || name == "Chat" || name == "HUD" || name == "LookTouchPad_8tdg5543ffre";
+		}
+
 		private void Awake()
 		{
 			EnsureHUDExists();
@@ -116,9 +126,9 @@ namespace Keyneed.MobileController
 
 			Color hudColor = new Color(1f, 1f, 1f, 0.39215686f);
 
-			// 2. Child 00: Joystick Touch Pad (covers left 40% of screen)
+			// 2. Child 00: Joystick Touch Pad (covers left 40% of screen, middle vertical band)
 			GameObject joyZoneGo = CreateUIElement("Joystick Touch Pad", transform,
-				new Vector2(0f, 0f), new Vector2(0.4f, 1f), Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+				new Vector2(0f, 0.20f), new Vector2(0.4f, 0.75f), Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
 			Image joyZoneImg = joyZoneGo.AddComponent<Image>();
 			joyZoneImg.color = Color.clear;
 			joyZoneImg.raycastTarget = true;
@@ -246,16 +256,15 @@ namespace Keyneed.MobileController
 				new RussianButtonSpec("f4", 0.0f, 1.0f, 0.0f, 1.0f, 1150.0f, -60.999969482421875f, 75.0f, 75.0f, KeyCode.F4, false, ButtonPattern.Vehicle, "lineLight09", "", 0f, 0.0f, 0.0f, "f4"),
 				new RussianButtonSpec("f5", 0.0f, 1.0f, 0.0f, 1.0f, 1249.9998779296875f, -60.999969482421875f, 75.0f, 75.0f, KeyCode.F5, false, ButtonPattern.Vehicle, "lineLight09", "", 0f, 0.0f, 0.0f, "f5"),
 				new RussianButtonSpec("f6", 0.0f, 1.0f, 0.0f, 1.0f, 1350.0f, -61.0001220703125f, 75.0f, 75.0f, KeyCode.F6, false, ButtonPattern.Vehicle, "lineLight09", "", 0f, 0.0f, 0.0f, "f6"),
-				new RussianButtonSpec("Global Chat", 1.0f, 1.0f, 1.0f, 1.0f, -74.0f, -173.0f, 75.0f, 75.0f, KeyCode.J, false, ButtonPattern.None, "lineLight09", "write", 0f, -40.0f, -40.0f, ""),
+				new RussianButtonSpec("Chat", 1.0f, 1.0f, 1.0f, 1.0f, -74.0f, -173.0f, 75.0f, 75.0f, KeyCode.Return, false, ButtonPattern.None, "lineLight09", "write", 0f, -40.0f, -40.0f, ""),
 				new RussianButtonSpec("A", 0.0f, 0.0f, 0.0f, 0.0f, 300.20001220703125f, 256.0f, 169.1999969482422f, 169.20001220703125f, KeyCode.A, false, ButtonPattern.Vehicle, "lineLight09", "crosshairDownFree", -90f, -100.0f, -100.0f, ""),
 				new RussianButtonSpec("D", 0.0f, 0.0f, 0.0f, 0.0f, 670.5f, 256.0f, 169.1999969482422f, 169.20001220703125f, KeyCode.D, false, ButtonPattern.Vehicle, "lineLight09", "crosshairDownFree", 90f, -100.0f, -100.0f, ""),
 				new RussianButtonSpec("W", 1.0f, 0.0f, 1.0f, 0.0f, -523.0f, 451.74005126953125f, 169.199951171875f, 169.20001220703125f, KeyCode.W, true, ButtonPattern.Vehicle, "lineLight09", "crosshairDownFree", -90f, -100.0f, -100.0f, ""),
 				new RussianButtonSpec("S", 1.0f, 0.0f, 1.0f, 0.0f, -523.0f, 229.0f, 169.199951171875f, 169.20001220703125f, KeyCode.S, true, ButtonPattern.Vehicle, "lineLight09", "crosshairDownFree", 90f, -100.0f, -100.0f, ""),
-				new RussianButtonSpec("Chat", 1.0f, 1.0f, 1.0f, 1.0f, -86.0f, -261.2999572753906f, 75.0f, 75.0f, KeyCode.Return, false, ButtonPattern.None, "lineLight09", "write", 0f, -30.0f, -30.0f, ""),
-				new RussianButtonSpec("ExitCar", 1.0f, 1.0f, 1.0f, 1.0f, -211.0f, -73.0f, 100.0f, 100.0f, KeyCode.F, false, ButtonPattern.None, "lineLight09", "back", 0f, -40.0f, -40.0f, ""),
+				new RussianButtonSpec("ExitCar", 1.0f, 1.0f, 1.0f, 1.0f, -211.0f, -73.0f, 100.0f, 100.0f, KeyCode.F, false, ButtonPattern.Vehicle, "lineLight09", "back", 0f, -40.0f, -40.0f, ""),
 				new RussianButtonSpec("HUD", 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 75.0f, 75.0f, KeyCode.Home, false, ButtonPattern.None, "lineLight09", "", 45f, -30.0f, -30.0f, ""),
 				new RussianButtonSpec("Light", 0.0f, 1.0f, 0.0f, 1.0f, 53.0f, -161.3000030517578f, 75.0f, 75.0f, KeyCode.N, false, ButtonPattern.None, "lineLight09", "", 0f, -30.0f, -30.0f, ""),
-				new RussianButtonSpec("H", 1.0f, 1.0f, 1.0f, 1.0f, -74.0f, -275.20001220703125f, 75.0f, 75.0f, KeyCode.H, true, ButtonPattern.None, "lineLight09", "Tab", -45f, -30.0f, -30.0f, ""),
+				new RussianButtonSpec("H", 1.0f, 1.0f, 1.0f, 1.0f, -74.0f, -275.20001220703125f, 75.0f, 75.0f, KeyCode.H, true, ButtonPattern.Vehicle, "lineLight09", "Tab", -45f, -30.0f, -30.0f, ""),
 				new RussianButtonSpec("Fire1", 0.0f, 1.0f, 0.0f, 1.0f, 246.0f, -284.0f, 125.0f, 125.0f, KeyCode.Mouse0, true, ButtonPattern.None, "lineLight09", "pvp", 135f, -40.0f, -40.0f, ""),
 				new RussianButtonSpec("B", 0.0f, 1.0f, 0.0f, 1.0f, 256.00006103515625f, -62.5f, 75.0f, 75.0f, KeyCode.B, false, ButtonPattern.None, "lineLight09", "", 0f, 0.0f, 0.0f, "B"),
 			};

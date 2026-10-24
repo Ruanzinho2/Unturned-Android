@@ -46,26 +46,50 @@ namespace Keyneed.MobileController
 				return;
 			}
 
+			bool isInVehicle = RussianHUDBuilder.IsInVehicle();
 			bool visible = true;
-			switch (m_ButtonPattern)
+
+			if (isInVehicle)
 			{
-				case ButtonPattern.Vehicle:
-					visible = Player.player != null && Player.player.movement != null && Player.player.movement.getVehicle() != null;
-					break;
-
-				case ButtonPattern.Weapon:
-					visible = Player.player != null && Player.player.equipment != null && Player.player.equipment.useable != null;
-					break;
-
-				case ButtonPattern.Interact:
-					visible = PlayerInteract.interactable != null;
-					break;
-
-				case ButtonPattern.Network:
-				case ButtonPattern.None:
-				default:
+				if (m_ButtonPattern == ButtonPattern.Vehicle)
+				{
 					visible = true;
-					break;
+				}
+				else if (RussianHUDBuilder.IsGlobalButton(gameObject.name))
+				{
+					visible = true;
+				}
+				else if (m_ButtonPattern == ButtonPattern.Weapon && Player.player != null && Player.player.equipment != null && Player.player.equipment.useable != null)
+				{
+					visible = true;
+				}
+				else
+				{
+					visible = false;
+				}
+			}
+			else
+			{
+				switch (m_ButtonPattern)
+				{
+					case ButtonPattern.Vehicle:
+						visible = false;
+						break;
+
+					case ButtonPattern.Weapon:
+						visible = Player.player != null && Player.player.equipment != null && Player.player.equipment.useable != null;
+						break;
+
+					case ButtonPattern.Interact:
+						visible = PlayerInteract.interactable != null;
+						break;
+
+					case ButtonPattern.Network:
+					case ButtonPattern.None:
+					default:
+						visible = true;
+						break;
+				}
 			}
 
 			float targetAlpha = visible ? (m_SpecialButton != null ? m_SpecialButton.m_AlphaVisibility : 1f) : 0f;

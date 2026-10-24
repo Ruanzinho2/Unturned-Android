@@ -1915,6 +1915,19 @@ namespace SDG.Unturned
 					}
 				}
 
+				if (InputEx.ConsumeKeyDown(KeyCode.Return) || InputEx.ConsumeKeyDown(KeyCode.J) || InputEx.ConsumeKeyDown(ControlsSettings.global))
+				{
+					if (PlayerLifeUI.chatting)
+					{
+						PlayerLifeUI.SendChatAndClose();
+					}
+					else if (PlayerLifeUI.active && canOpenMenus)
+					{
+						chat = EChatMode.GLOBAL;
+						PlayerLifeUI.openChat();
+					}
+				}
+
 				if (InputEx.ConsumeKeyDown(ControlsSettings.inventory))
 				{
 					if (PlayerDashboardUI.active && PlayerDashboardInventoryUI.active)
