@@ -78,6 +78,13 @@ namespace Steamworks {
         public delegate void ServerResponded(HServerListRequest hRequest, int iServer);
         public delegate void ServerFailedToRespond(HServerListRequest hRequest, int iServer);
         public delegate void RefreshComplete(HServerListRequest hRequest, EMatchMakingServerResponse response);
-        public ISteamMatchmakingServerListResponse(ServerResponded onServerResponded, ServerFailedToRespond onServerFailedToRespond, RefreshComplete onRefreshComplete) {}
+        public ServerResponded m_ServerResponded;
+        public ServerFailedToRespond m_ServerFailedToRespond;
+        public RefreshComplete m_RefreshComplete;
+        public ISteamMatchmakingServerListResponse(ServerResponded onServerResponded, ServerFailedToRespond onServerFailedToRespond, RefreshComplete onRefreshComplete) {
+            m_ServerResponded = onServerResponded;
+            m_ServerFailedToRespond = onServerFailedToRespond;
+            m_RefreshComplete = onRefreshComplete;
+        }
     }
 }

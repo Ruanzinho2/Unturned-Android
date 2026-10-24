@@ -1048,7 +1048,7 @@ namespace Steamworks {
             return HSteamListenSocket.Invalid;
         }
         public static HSteamNetConnection ConnectByIPAddress(ref SteamNetworkingIPAddr address, int nOptions, SteamNetworkingConfigValue_t[] pOptions) {
-            return HSteamNetConnection.Invalid;
+            return NativeGameNetworkingSockets.ConnectByIPAddress(ref address, nOptions, pOptions);
         }
         public static HSteamListenSocket CreateListenSocketP2P(int nLocalVirtualPort, int nOptions, SteamNetworkingConfigValue_t[] pOptions) {
             return HSteamListenSocket.Invalid;
@@ -1060,7 +1060,7 @@ namespace Steamworks {
             return default;
         }
         public static bool CloseConnection(HSteamNetConnection hPeer, int nReason, string pszDebug, bool bEnableLinger) {
-            return false;
+            return NativeGameNetworkingSockets.CloseConnection(hPeer, nReason, pszDebug, bEnableLinger);
         }
         public static bool CloseListenSocket(HSteamListenSocket hSocket) {
             return false;
@@ -1079,8 +1079,7 @@ namespace Steamworks {
             return false;
         }
         public static EResult SendMessageToConnection(HSteamNetConnection hConn, IntPtr pData, uint cbData, int nSendFlags, out long pOutMessageNumber) {
-            pOutMessageNumber = default;
-            return default;
+            return NativeGameNetworkingSockets.SendMessageToConnection(hConn, pData, cbData, nSendFlags, out pOutMessageNumber);
         }
         public static void SendMessages(int nMessages, SteamNetworkingMessage_t[] pMessages, long[] pOutMessageNumberOrResult) {
             return;
@@ -1089,14 +1088,13 @@ namespace Steamworks {
             return default;
         }
         public static int ReceiveMessagesOnConnection(HSteamNetConnection hConn, IntPtr[] ppOutMessages, int nMaxMessages) {
-            return 0;
+            return NativeGameNetworkingSockets.ReceiveMessagesOnConnection(hConn, ppOutMessages, nMaxMessages);
         }
         public static bool GetConnectionInfo(HSteamNetConnection hConn, out SteamNetConnectionInfo_t pInfo) {
-            pInfo = default;
-            return false;
+            return NativeGameNetworkingSockets.GetConnectionInfo(hConn, out pInfo);
         }
         public static EResult GetConnectionRealTimeStatus(HSteamNetConnection hConn, ref SteamNetConnectionRealTimeStatus_t pStatus, int nLanes, ref SteamNetConnectionRealTimeLaneStatus_t pLanes) {
-            return default;
+            return NativeGameNetworkingSockets.GetConnectionRealTimeStatus(hConn, ref pStatus, nLanes, ref pLanes);
         }
         public static int GetDetailedConnectionStatus(HSteamNetConnection hConn, out string pszBuf, int cbBuf) {
             pszBuf = default;
@@ -1189,6 +1187,7 @@ namespace Steamworks {
         }
         public static void RunCallbacks() {
             A2SPingQuery.RunCallbacks();
+            NativeGameNetworkingSockets.RunCallbacks();
         }
         public static bool BeginAsyncRequestFakeIP(int nNumPorts) {
             return false;
@@ -2368,37 +2367,37 @@ namespace Steamworks {
 
     public static class SteamMatchmakingServers {
         public static HServerListRequest RequestInternetServerList(AppId_t iApp, MatchMakingKeyValuePair_t[] ppchFilters, uint nFilters, ISteamMatchmakingServerListResponse pRequestServersResponse) {
-            return default;
+            return SteamMasterServerQuery.RequestInternetServerList(iApp, ppchFilters, nFilters, pRequestServersResponse);
         }
         public static HServerListRequest RequestLANServerList(AppId_t iApp, ISteamMatchmakingServerListResponse pRequestServersResponse) {
-            return default;
+            return SteamMasterServerQuery.RequestLANServerList(iApp, pRequestServersResponse);
         }
         public static HServerListRequest RequestFriendsServerList(AppId_t iApp, MatchMakingKeyValuePair_t[] ppchFilters, uint nFilters, ISteamMatchmakingServerListResponse pRequestServersResponse) {
-            return default;
+            return SteamMasterServerQuery.RequestInternetServerList(iApp, ppchFilters, nFilters, pRequestServersResponse);
         }
         public static HServerListRequest RequestFavoritesServerList(AppId_t iApp, MatchMakingKeyValuePair_t[] ppchFilters, uint nFilters, ISteamMatchmakingServerListResponse pRequestServersResponse) {
-            return default;
+            return SteamMasterServerQuery.RequestInternetServerList(iApp, ppchFilters, nFilters, pRequestServersResponse);
         }
         public static HServerListRequest RequestHistoryServerList(AppId_t iApp, MatchMakingKeyValuePair_t[] ppchFilters, uint nFilters, ISteamMatchmakingServerListResponse pRequestServersResponse) {
-            return default;
+            return SteamMasterServerQuery.RequestInternetServerList(iApp, ppchFilters, nFilters, pRequestServersResponse);
         }
         public static HServerListRequest RequestSpectatorServerList(AppId_t iApp, MatchMakingKeyValuePair_t[] ppchFilters, uint nFilters, ISteamMatchmakingServerListResponse pRequestServersResponse) {
             return default;
         }
         public static void ReleaseRequest(HServerListRequest hServerListRequest) {
-            return;
+            SteamMasterServerQuery.ReleaseRequest(hServerListRequest);
         }
         public static gameserveritem_t GetServerDetails(HServerListRequest hRequest, int iServer) {
-            return default;
+            return SteamMasterServerQuery.GetServerDetails(hRequest, iServer);
         }
         public static void CancelQuery(HServerListRequest hRequest) {
-            return;
+            SteamMasterServerQuery.CancelQuery(hRequest);
         }
         public static void RefreshQuery(HServerListRequest hRequest) {
             return;
         }
         public static bool IsRefreshing(HServerListRequest hRequest) {
-            return false;
+            return SteamMasterServerQuery.IsRefreshing(hRequest);
         }
         public static int GetServerCount(HServerListRequest hRequest) {
             return 0;
@@ -2752,7 +2751,7 @@ namespace Steamworks {
             return HSteamListenSocket.Invalid;
         }
         public static HSteamNetConnection ConnectByIPAddress(ref SteamNetworkingIPAddr address, int nOptions, SteamNetworkingConfigValue_t[] pOptions) {
-            return HSteamNetConnection.Invalid;
+            return NativeGameNetworkingSockets.ConnectByIPAddress(ref address, nOptions, pOptions);
         }
         public static HSteamListenSocket CreateListenSocketP2P(int nLocalVirtualPort, int nOptions, SteamNetworkingConfigValue_t[] pOptions) {
             return HSteamListenSocket.Invalid;
@@ -2764,7 +2763,7 @@ namespace Steamworks {
             return default;
         }
         public static bool CloseConnection(HSteamNetConnection hPeer, int nReason, string pszDebug, bool bEnableLinger) {
-            return false;
+            return NativeGameNetworkingSockets.CloseConnection(hPeer, nReason, pszDebug, bEnableLinger);
         }
         public static bool CloseListenSocket(HSteamListenSocket hSocket) {
             return false;
@@ -2783,8 +2782,7 @@ namespace Steamworks {
             return false;
         }
         public static EResult SendMessageToConnection(HSteamNetConnection hConn, IntPtr pData, uint cbData, int nSendFlags, out long pOutMessageNumber) {
-            pOutMessageNumber = default;
-            return default;
+            return NativeGameNetworkingSockets.SendMessageToConnection(hConn, pData, cbData, nSendFlags, out pOutMessageNumber);
         }
         public static void SendMessages(int nMessages, SteamNetworkingMessage_t[] pMessages, long[] pOutMessageNumberOrResult) {
             return;
@@ -2793,14 +2791,13 @@ namespace Steamworks {
             return default;
         }
         public static int ReceiveMessagesOnConnection(HSteamNetConnection hConn, IntPtr[] ppOutMessages, int nMaxMessages) {
-            return 0;
+            return NativeGameNetworkingSockets.ReceiveMessagesOnConnection(hConn, ppOutMessages, nMaxMessages);
         }
         public static bool GetConnectionInfo(HSteamNetConnection hConn, out SteamNetConnectionInfo_t pInfo) {
-            pInfo = default;
-            return false;
+            return NativeGameNetworkingSockets.GetConnectionInfo(hConn, out pInfo);
         }
         public static EResult GetConnectionRealTimeStatus(HSteamNetConnection hConn, ref SteamNetConnectionRealTimeStatus_t pStatus, int nLanes, ref SteamNetConnectionRealTimeLaneStatus_t pLanes) {
-            return default;
+            return NativeGameNetworkingSockets.GetConnectionRealTimeStatus(hConn, ref pStatus, nLanes, ref pLanes);
         }
         public static int GetDetailedConnectionStatus(HSteamNetConnection hConn, out string pszBuf, int cbBuf) {
             pszBuf = default;
@@ -2893,6 +2890,7 @@ namespace Steamworks {
         }
         public static void RunCallbacks() {
             A2SPingQuery.RunCallbacks();
+            NativeGameNetworkingSockets.RunCallbacks();
         }
         public static bool BeginAsyncRequestFakeIP(int nNumPorts) {
             return false;
@@ -4007,6 +4005,7 @@ namespace Steamworks {
         }
         public static void RunCallbacks() {
             A2SPingQuery.RunCallbacks();
+            NativeGameNetworkingSockets.RunCallbacks();
         }
         public static bool IsSteamRunning() {
             return false;
@@ -4028,6 +4027,7 @@ namespace Steamworks {
         }
         public static void RunCallbacks() {
             A2SPingQuery.RunCallbacks();
+            NativeGameNetworkingSockets.RunCallbacks();
         }
         public static void ReleaseCurrentThreadMemory() {
             return;

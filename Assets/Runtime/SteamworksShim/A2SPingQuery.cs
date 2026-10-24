@@ -83,7 +83,7 @@ namespace Steamworks {
 
                         // Check for A2S_INFO response: 0xFF 0xFF 0xFF 0xFF 0x49 ('I')
                         if (data.Length > 5 && data[0] == 0xFF && data[1] == 0xFF && data[2] == 0xFF && data[3] == 0xFF && data[4] == 0x49) {
-                            gameserveritem_t server = ParseA2SInfo(data, 5, unIP, usPort, pingMs);
+                            gameserveritem_t server = ParseA2SInfoInternal(data, 5, unIP, usPort, pingMs);
                             mainThreadActions.Enqueue(() => {
                                 response?.m_ServerResponded?.Invoke(server);
                             });
@@ -124,7 +124,11 @@ namespace Steamworks {
             return sb.ToString();
         }
 
-        private static gameserveritem_t ParseA2SInfo(byte[] data, int offset, uint unIP, ushort usQueryPort, int pingMs) {
+        public static void EnqueueAction(Action action) {
+            if (action != null) mainThreadActions.Enqueue(action);
+        }
+
+        public static gameserveritem_t ParseA2SInfoInternal(byte[] data, int offset, uint unIP, ushort usQueryPort, int pingMs) {
             using (MemoryStream ms = new MemoryStream(data)) {
                 ms.Seek(offset, SeekOrigin.Begin);
                 using (BinaryReader reader = new BinaryReader(ms, Encoding.UTF8)) {
@@ -162,6 +166,12 @@ namespace Steamworks {
                         if ((edf & 0x20) != 0) {
                             tags = ReadNullTerminatedString(reader);
                         }
+                    }
+
+                    // If steamID is missing or anonymous, ensure it has a valid GameServer account type
+                    // so Unturned does not ignore it on the internet list.
+                    if (steamId == 0) {
+                        steamId = 0x0140000000000000UL | (ulong)unIP;
                     }
 
                     gameserveritem_t item = new gameserveritem_t();
