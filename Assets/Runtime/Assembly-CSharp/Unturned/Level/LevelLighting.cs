@@ -1359,6 +1359,13 @@ namespace SDG.Unturned
 
 				sun = lighting.Find("Sun");
 				sunLight = sun.GetComponent<Light>();
+#if UNITY_ANDROID
+				if (sunLight != null)
+				{
+					sunLight.shadowBias = 0.05f;
+					sunLight.shadowNormalBias = 0.0f;
+				}
+#endif
 				if (GraphicsSettings.WantsCinematicMode)
 				{
 					sunLight.shadowCustomResolution = SystemInfo.maxTextureSize;

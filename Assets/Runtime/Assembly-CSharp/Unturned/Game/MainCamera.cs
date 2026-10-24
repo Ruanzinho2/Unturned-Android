@@ -106,6 +106,12 @@ namespace SDG.Unturned
 
 			instanceTransform = transform;
 			instance = transform.GetComponent<Camera>();
+#if UNITY_ANDROID
+			if (instance != null)
+			{
+				instance.nearClipPlane = 0.20f;
+			}
+#endif
 			instance.eventMask = 0; // Responsible for OnMouseXYZ events that we do not use.
 			_isPositionFrozen = false;
 

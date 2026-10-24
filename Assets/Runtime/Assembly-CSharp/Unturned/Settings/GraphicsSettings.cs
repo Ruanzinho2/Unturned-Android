@@ -755,7 +755,7 @@ namespace SDG.Unturned
 				case EGraphicQuality.LOW:
 					QualitySettings.shadows = ShadowQuality.HardOnly;
 					QualitySettings.pixelLightCount = 1;
-					QualitySettings.shadowResolution = ShadowResolution.Low;
+					QualitySettings.shadowResolution = ShadowResolution.Medium;
 					QualitySettings.shadowDistance = 35f;
 					QualitySettings.shadowCascades = 1;
 					break;
@@ -763,30 +763,30 @@ namespace SDG.Unturned
 				case EGraphicQuality.MEDIUM:
 					QualitySettings.shadows = ShadowQuality.All;
 					QualitySettings.pixelLightCount = 2;
-					QualitySettings.shadowResolution = ShadowResolution.Medium;
-					QualitySettings.shadowDistance = 55f;
-					QualitySettings.shadowCascades = 2;
-					QualitySettings.shadowCascade2Split = 0.33f;
+					QualitySettings.shadowResolution = ShadowResolution.High;
+					QualitySettings.shadowDistance = 50f;
+					QualitySettings.shadowCascades = 1;
 					break;
 
 				case EGraphicQuality.HIGH:
 					QualitySettings.shadows = ShadowQuality.All;
 					QualitySettings.pixelLightCount = 3;
 					QualitySettings.shadowResolution = ShadowResolution.High;
-					QualitySettings.shadowDistance = 80f;
-					QualitySettings.shadowCascades = 2;
-					QualitySettings.shadowCascade2Split = 0.25f;
+					QualitySettings.shadowDistance = 70f;
+					QualitySettings.shadowCascades = 1;
 					break;
 
 				case EGraphicQuality.ULTRA:
 					QualitySettings.shadows = ShadowQuality.All;
 					QualitySettings.pixelLightCount = 4;
 					QualitySettings.shadowResolution = ShadowResolution.VeryHigh;
-					QualitySettings.shadowDistance = 110f;
-					QualitySettings.shadowCascades = 2;
-					QualitySettings.shadowCascade2Split = 0.20f;
+					QualitySettings.shadowDistance = 90f;
+					QualitySettings.shadowCascades = 1;
 					break;
 			}
+
+			QualitySettings.shadowProjection = ShadowProjection.CloseFit;
+			QualitySettings.shadowNearPlaneOffset = 0.5f;
 
 			if (LevelLighting.sun != null)
 			{
@@ -794,7 +794,7 @@ namespace SDG.Unturned
 				if (sunLight != null)
 				{
 					sunLight.shadowBias = 0.05f;
-					sunLight.shadowNormalBias = (lightingQuality >= EGraphicQuality.HIGH) ? 0.3f : 0.5f;
+					sunLight.shadowNormalBias = 0.0f;
 				}
 			}
 #else
@@ -986,6 +986,7 @@ namespace SDG.Unturned
 				MainCamera.instance.layerCullDistances = layerCullDistances;
 				MainCamera.instance.layerCullSpherical = true;
 #if UNITY_ANDROID
+				MainCamera.instance.nearClipPlane = 0.20f;
 				MainCamera.instance.depthTextureMode |= DepthTextureMode.Depth;
 #endif
 
@@ -995,6 +996,9 @@ namespace SDG.Unturned
 					Player.LocalPlayer.look.scopeCamera.layerCullDistances = layerCullDistances;
 					Player.LocalPlayer.look.scopeCamera.layerCullSpherical = true;
 					Player.LocalPlayer.look.scopeCamera.depthTextureMode = DepthTextureMode.Depth;
+#if UNITY_ANDROID
+					Player.LocalPlayer.look.scopeCamera.nearClipPlane = 0.20f;
+#endif
 
 					Player.LocalPlayer.look.updateScope(scopeQuality);
 
@@ -1108,7 +1112,7 @@ namespace SDG.Unturned
 			{
 				ShaderLog.LogGraphicsSetting("Render Mode", renderMode, $"Camera RenderingPath={MainCamera.instance?.renderingPath}");
 				ShaderLog.LogGraphicsSetting("Water Quality", waterQuality, $"Keyword: _WATER_QUALITY_{waterQuality}, EdgeBlend={Shader.IsKeywordEnabled("WATER_EDGEBLEND_ON")}");
-				ShaderLog.LogGraphicsSetting("Lighting Quality", lightingQuality, $"Shadows={QualitySettings.shadows}, Cascades={QualitySettings.shadowCascades}, Dist={QualitySettings.shadowDistance}m, PixelLights={QualitySettings.pixelLightCount}");
+				ShaderLog.LogGraphicsSetting("Lighting Quality", lightingQuality, $"Shadows={QualitySettings.shadows}, Cascades={QualitySettings.shadowCascades}, Dist={QualitySettings.shadowDistance}m, PixelLights={QualitySettings.pixelLightCount}, Projection={QualitySettings.shadowProjection}, NearOffset={QualitySettings.shadowNearPlaneOffset}, NearClip={MainCamera.instance?.nearClipPlane}");
 				ShaderLog.LogGraphicsSetting("Ambient Occlusion", isAmbientOcclusionEnabled, $"CameraDepthMode={MainCamera.instance?.depthTextureMode}");
 				ShaderLog.LogGraphicsSetting("Bloom", bloom, $"MobileBloom={bloom}");
 				ShaderLog.LogGraphicsSetting("Sun Shafts", sunShaftsQuality, $"MobileSunShafts={sunShaftsQuality}");
