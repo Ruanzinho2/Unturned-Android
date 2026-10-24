@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using UnityEngine;
 
 namespace SDG.Unturned
@@ -50,59 +51,82 @@ namespace SDG.Unturned
 			{
 				if (Application.platform != RuntimePlatform.Android) return;
 
-				using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+				Type unityPlayerType = Type.GetType("UnityEngine.AndroidJavaClass, UnityEngine.AndroidJNIModule")
+					?? Type.GetType("UnityEngine.AndroidJavaClass, UnityEngine");
+
+				if (unityPlayerType != null)
 				{
-					AndroidJavaObject activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
-					if (activity == null) return;
+					object unityPlayer = Activator.CreateInstance(unityPlayerType, "com.unity3d.player.UnityPlayer");
+					MethodInfo getStaticMethod = unityPlayerType.GetMethod("GetStatic");
+					Type androidJavaObjectType = Type.GetType("UnityEngine.AndroidJavaObject, UnityEngine.AndroidJNIModule")
+						?? Type.GetType("UnityEngine.AndroidJavaObject, UnityEngine");
 
-					activity.Call("runOnUiThread", new AndroidJavaRunnable(() =>
+					if (getStaticMethod != null && androidJavaObjectType != null)
 					{
-						try
-						{
-							using (AndroidJavaObject window = activity.Call<AndroidJavaObject>("getWindow"))
-							{
-								if (window == null) return;
+						MethodInfo getStaticActivity = getStaticMethod.MakeGenericMethod(androidJavaObjectType);
+						object activity = getStaticActivity.Invoke(unityPlayer, new object[] { "currentActivity" });
 
-								using (AndroidJavaClass buildVersion = new AndroidJavaClass("android.os.Build$VERSION"))
+						if (activity != null)
+						{
+							Type runnableType = Type.GetType("UnityEngine.AndroidJavaRunnable, UnityEngine.AndroidJNIModule")
+								?? Type.GetType("UnityEngine.AndroidJavaRunnable, UnityEngine");
+
+							Action runAction = () =>
+							{
+								try
 								{
-									int sdkInt = buildVersion.GetStatic<int>("SDK_INT");
-									if (sdkInt >= 28) // Android 9.0 (Pie) or higher
+									MethodInfo callWindow = androidJavaObjectType.GetMethod("Call", new Type[] { typeof(string), typeof(object[]) });
+									if (callWindow == null)
+										callWindow = androidJavaObjectType.GetMethod("Call", new Type[] { typeof(string) });
+
+									object window = callWindow?.Invoke(activity, new object[] { "getWindow", Array.Empty<object>() });
+									if (window != null)
 									{
-										using (AndroidJavaObject layoutParams = window.Call<AndroidJavaObject>("getAttributes"))
+										object versionClass = Activator.CreateInstance(unityPlayerType, "android.os.Build$VERSION");
+										MethodInfo getStaticInt = getStaticMethod.MakeGenericMethod(typeof(int));
+										int sdkInt = (int)(getStaticInt?.Invoke(versionClass, new object[] { "SDK_INT" }) ?? 0);
+
+										if (sdkInt >= 28)
 										{
-											// 1 = LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-											// In Android R / API 30+: 3 = LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-											int cutoutMode = (sdkInt >= 30) ? 3 : 1;
-											layoutParams.Set("layoutInDisplayCutoutMode", cutoutMode);
-											window.Call("setAttributes", layoutParams);
+											object layoutParams = callWindow.Invoke(window, new object[] { "getAttributes", Array.Empty<object>() });
+											if (layoutParams != null)
+											{
+												MethodInfo setField = androidJavaObjectType.GetMethod("Set");
+												MethodInfo setIntField = setField?.MakeGenericMethod(typeof(int));
+												int cutoutMode = (sdkInt >= 30) ? 3 : 1;
+												setIntField?.Invoke(layoutParams, new object[] { "layoutInDisplayCutoutMode", cutoutMode });
+
+												MethodInfo callVoid = androidJavaObjectType.GetMethod("Call", new Type[] { typeof(string), typeof(object[]) });
+												callVoid?.Invoke(window, new object[] { "setAttributes", new object[] { layoutParams } });
+											}
+										}
+
+										object decorView = callWindow.Invoke(window, new object[] { "getDecorView", Array.Empty<object>() });
+										if (decorView != null)
+										{
+											int uiOptions = 4 | 2 | 4096 | 1024 | 512 | 256;
+											MethodInfo callVoid = androidJavaObjectType.GetMethod("Call", new Type[] { typeof(string), typeof(object[]) });
+											callVoid?.Invoke(decorView, new object[] { "setSystemUiVisibility", new object[] { uiOptions } });
 										}
 									}
 								}
-
-								using (AndroidJavaObject decorView = window.Call<AndroidJavaObject>("getDecorView"))
+								catch (Exception innerEx)
 								{
-									if (decorView != null)
-									{
-										// View.SYSTEM_UI_FLAG_FULLSCREEN = 4
-										// View.SYSTEM_UI_FLAG_HIDE_NAVIGATION = 2
-										// View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY = 4096
-										// View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN = 1024
-										// View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION = 512
-										// View.SYSTEM_UI_FLAG_LAYOUT_STABLE = 256
-										int uiOptions = 4 | 2 | 4096 | 1024 | 512 | 256;
-										decorView.Call("setSystemUiVisibility", uiOptions);
-									}
+									UnturnedLog.warn($"[AndroidDisplayConfig] runOnUiThread error: {innerEx.Message}");
 								}
+							};
+
+							if (runnableType != null)
+							{
+								Delegate runnable = Delegate.CreateDelegate(runnableType, runAction.Target, runAction.Method);
+								MethodInfo callActivity = androidJavaObjectType.GetMethod("Call", new Type[] { typeof(string), typeof(object[]) });
+								callActivity?.Invoke(activity, new object[] { "runOnUiThread", new object[] { runnable } });
 							}
 						}
-						catch (Exception innerEx)
-						{
-							UnturnedLog.warn($"[AndroidDisplayConfig] runOnUiThread error: {innerEx.Message}");
-						}
-					}));
+					}
 				}
 
-				UnturnedLog.info($"[AndroidDisplayConfig] Display resolution: {Screen.width}x{Screen.height}, SafeArea: {Screen.safeArea}");
+				UnturnedLog.info($"[AndroidDisplayConfig] Screen resolution: {Screen.width}x{Screen.height}, SafeArea: {Screen.safeArea}");
 			}
 			catch (Exception ex)
 			{
