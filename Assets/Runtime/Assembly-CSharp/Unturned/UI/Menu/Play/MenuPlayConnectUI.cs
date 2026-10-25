@@ -40,6 +40,7 @@ namespace SDG.Unturned
 		private static ISleekImage serverCodeIcon;
 		private static ISleekField steamIdField;
 		private static ISleekField personaNameField;
+		private static ISleekButton steamQrLoginButton;
 
 
 		/// <param name="shouldAutoJoin">If true the server is immediately joined, otherwise show server details beforehand.</param>
@@ -617,6 +618,20 @@ namespace SDG.Unturned
 			personaNameField.OnTextChanged += onTypedPersonaNameField;
 			container.AddChild(personaNameField);
 
+			steamQrLoginButton = Glazier.Get().CreateButton();
+			steamQrLoginButton.PositionOffset_X = -300;
+			steamQrLoginButton.PositionOffset_Y = 165;
+			steamQrLoginButton.PositionScale_X = 0.5f;
+			steamQrLoginButton.PositionScale_Y = 0.5f;
+			steamQrLoginButton.SizeOffset_X = 600;
+			steamQrLoginButton.SizeOffset_Y = 35;
+			steamQrLoginButton.Text = "Login com Steam (QR Code)";
+			steamQrLoginButton.TooltipText = "Entrar com sua conta oficial da Steam via QR Code pelo celular";
+			steamQrLoginButton.OnClicked += onClickedSteamQrLoginButton;
+			container.AddChild(steamQrLoginButton);
+
+			SteamBridge.EnsureInitialized();
+
 			RefreshAddressInfo();
 			RefreshServerCodeInfo();
 
@@ -656,6 +671,29 @@ namespace SDG.Unturned
 				UnityEngine.PlayerPrefs.Save();
 				Provider.UpdateClientSteamCredentials();
 			}
+		}
+
+		public static void UpdateConfiguredFields(ulong steamId, string personaName)
+		{
+			if (steamIdField != null)
+			{
+				steamIdField.Text = steamId.ToString();
+			}
+			if (personaNameField != null)
+			{
+				personaNameField.Text = personaName;
+			}
+			SteamUser.ConfiguredSteamID = steamId;
+			SteamFriends.ConfiguredPersonaName = personaName;
+			UnityEngine.PlayerPrefs.SetString("SteamID64", steamId.ToString());
+			UnityEngine.PlayerPrefs.SetString("SteamPersonaName", personaName);
+			UnityEngine.PlayerPrefs.Save();
+			Provider.UpdateClientSteamCredentials();
+		}
+
+		private static void onClickedSteamQrLoginButton(ISleekElement button)
+		{
+			MenuSteamQrLoginUI.open();
 		}
 	}
 }

@@ -5951,6 +5951,19 @@ namespace SDG.Unturned
 				return null;
 			}
 
+#if UNITY_ANDROID && !UNITY_EDITOR
+			if (SteamBridge.IsLoggedOn)
+			{
+				byte[] javaTicket = SteamBridge.GetAuthSessionTicket(304930);
+				if (javaTicket != null && javaTicket.Length > 0)
+				{
+					UnturnedLog.info($"[SteamBridge] Acquired genuine Steam Auth Session Ticket ({javaTicket.Length} bytes) from JavaSteam!");
+					ticketHandle = new HAuthTicket(1);
+					return javaTicket;
+				}
+			}
+#endif
+
 			uint size;
 			byte[] temp = new byte[1024];
 

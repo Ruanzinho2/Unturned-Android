@@ -1,0 +1,26 @@
+allprojects {
+    buildscript {
+        repositories {
+            **BUILD_SCRIPT_REPOSITORIES**
+        }
+
+        dependencies {
+            // If you are changing the Android Gradle Plugin version, make sure it is compatible with the Gradle version pre-installed with Unity
+            // See which version ships with Unity and where to download it at https://docs.unity3d.com/Manual/android-gradle-overview.html
+            **BUILD_SCRIPT_DEPENDENCIES**
+        }
+    }
+
+    repositories {
+        **ARTIFACTORYREPOSITORY**
+        google()
+        mavenCentral()
+        flatDir {
+            dirs "${project(':unityLibrary').projectDir}/libs"
+        }
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
