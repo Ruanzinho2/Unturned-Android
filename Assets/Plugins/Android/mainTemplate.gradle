@@ -10,7 +10,7 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 **DEPS**
     implementation 'in.dragonbra:javasteam:1.7.0'
-    implementation 'org.bouncycastle:bcprov-jdk18on:1.78'
+    implementation 'org.bouncycastle:bcprov-jdk15to18:1.78'
     implementation 'com.google.zxing:core:3.5.3'
     implementation 'androidx.multidex:multidex:2.0.1'
 }
