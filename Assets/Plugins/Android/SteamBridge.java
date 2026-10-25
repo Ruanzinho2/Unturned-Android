@@ -185,7 +185,7 @@ public class SteamBridge {
                     notifyFailed("Sessão de login expirada ou rejeitada.");
                 }
 
-            } catch (Exception ex) {
+            } catch (Throwable ex) {
                 Log.e(TAG, "QR Login error: " + ex.getMessage(), ex);
                 notifyFailed("Erro durante login: " + ex.getMessage());
             }
@@ -228,7 +228,7 @@ public class SteamBridge {
                 } else {
                     notifyFailed("Token de login expirado. Por favor, escaneie o QR Code novamente.");
                 }
-            } catch (Exception ex) {
+            } catch (Throwable ex) {
                 notifyFailed("Falha no login com token: " + ex.getMessage());
             }
         }, "JavaSteamTokenLoginThread").start();
