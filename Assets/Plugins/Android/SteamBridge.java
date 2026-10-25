@@ -22,6 +22,7 @@ import in.dragonbra.javasteam.steam.handlers.steamuser.SteamUser;
 import in.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOffCallback;
 import in.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOnCallback;
 import in.dragonbra.javasteam.steam.steamclient.SteamClient;
+import in.dragonbra.javasteam.steam.steamclient.callbackmgr.CallbackManager;
 import in.dragonbra.javasteam.steam.steamclient.callbacks.ConnectedCallback;
 import in.dragonbra.javasteam.steam.steamclient.callbacks.DisconnectedCallback;
 import in.dragonbra.javasteam.steam.steamclient.configuration.SteamConfiguration;
@@ -42,6 +43,7 @@ public class SteamBridge {
     }
 
     private static SteamClient sClient;
+    private static CallbackManager sCallbackMgr;
     private static SteamConfiguration sConfiguration;
     private static SteamAuthentication sAuthentication;
     private static QrAuthSession sCurrentQrSession;
@@ -61,19 +63,20 @@ public class SteamBridge {
         try {
             sConfiguration = SteamConfiguration.createDefault();
             sClient = new SteamClient(sConfiguration);
+            sCallbackMgr = new CallbackManager(sClient);
 
-            sClient.getCallbackManager().subscribe(ConnectedCallback.class, cb -> {
+            sCallbackMgr.subscribe(ConnectedCallback.class, cb -> {
                 Log.i(TAG, "SteamClient Connected to CM.");
                 sIsConnected = true;
             });
 
-            sClient.getCallbackManager().subscribe(DisconnectedCallback.class, cb -> {
+            sCallbackMgr.subscribe(DisconnectedCallback.class, cb -> {
                 Log.i(TAG, "SteamClient Disconnected (userInitiated=" + cb.isUserInitiated() + ")");
                 sIsConnected = false;
                 sIsLoggedOn = false;
             });
 
-            sClient.getCallbackManager().subscribe(LoggedOnCallback.class, cb -> {
+            sCallbackMgr.subscribe(LoggedOnCallback.class, cb -> {
                 if (cb.getResult() == EResult.OK) {
                     sIsLoggedOn = true;
                     if (cb.getClientSteamID() != null) {
@@ -86,7 +89,7 @@ public class SteamBridge {
                 }
             });
 
-            sClient.getCallbackManager().subscribe(LoggedOffCallback.class, cb -> {
+            sCallbackMgr.subscribe(LoggedOffCallback.class, cb -> {
                 Log.i(TAG, "SteamClient LoggedOff: " + cb.getResult());
                 sIsLoggedOn = false;
             });
@@ -95,8 +98,8 @@ public class SteamBridge {
                 Thread callbackThread = new Thread(() -> {
                     while (true) {
                         try {
-                            if (sClient != null) {
-                                sClient.getCallbackManager().runWaitCallbacks(500);
+                            if (sCallbackMgr != null) {
+                                sCallbackMgr.runWaitCallbacks(500);
                             } else {
                                 Thread.sleep(500);
                             }

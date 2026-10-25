@@ -2,10 +2,12 @@
 -keep class in.dragonbra.javasteam.** { *; }
 -keep class com.google.zxing.** { *; }
 -keep class com.google.protobuf.** { *; }
+-keep class org.bouncycastle.** { *; }
 -keep class io.ktor.** { *; }
 -keep class okhttp3.** { *; }
 
 -dontwarn in.dragonbra.javasteam.**
 -dontwarn com.google.protobuf.**
+-dontwarn org.bouncycastle.**
 -dontwarn io.ktor.**
 -dontwarn okhttp3.**

@@ -8,7 +8,7 @@ namespace SDG.Unturned
 {
     public static class SteamBridge
     {
-        private static readonly ConcurrentQueue<Action> mainThreadQueue = new ConcurrentQueue<Action>();
+        private static readonly ConcurrentQueue<System.Action> mainThreadQueue = new ConcurrentQueue<System.Action>();
         private static bool isInitialized = false;
 
         public static void EnsureInitialized()
@@ -50,7 +50,7 @@ namespace SDG.Unturned
             }
         }
 
-        public static void EnqueueMainThread(Action action)
+        public static void EnqueueMainThread(System.Action action)
         {
             if (action != null)
             {
@@ -61,9 +61,9 @@ namespace SDG.Unturned
 #if UNITY_ANDROID && !UNITY_EDITOR
         private class JavaSteamLoginCallbackProxy : AndroidJavaProxy
         {
-            private readonly Action<string, Texture2D> onQrReady;
-            private readonly Action<ulong, string> onLoginSuccess;
-            private readonly Action<string> onLoginFailed;
+            private readonly Action<string, Texture2D> callbackQrReady;
+            private readonly Action<ulong, string> callbackLoginSuccess;
+            private readonly Action<string> callbackLoginFailed;
 
             public JavaSteamLoginCallbackProxy(
                 Action<string, Texture2D> onQrReady,
@@ -71,9 +71,9 @@ namespace SDG.Unturned
                 Action<string> onLoginFailed)
                 : base("com.smartlydressedgames.unturned.SteamBridge$SteamLoginCallback")
             {
-                this.onQrReady = onQrReady;
-                this.onLoginSuccess = onLoginSuccess;
-                this.onLoginFailed = onLoginFailed;
+                this.callbackQrReady = onQrReady;
+                this.callbackLoginSuccess = onLoginSuccess;
+                this.callbackLoginFailed = onLoginFailed;
             }
 
             public void onQrReady(string url, byte[] pngBytes)
@@ -94,7 +94,7 @@ namespace SDG.Unturned
                             UnturnedLog.warn($"[SteamBridge] Error loading QR image: {ex.Message}");
                         }
                     }
-                    onQrReady?.Invoke(url, tex);
+                    callbackQrReady?.Invoke(url, tex);
                 });
             }
 
@@ -114,7 +114,7 @@ namespace SDG.Unturned
                     Provider.UpdateClientSteamCredentials();
 
                     UnturnedLog.info($"[SteamBridge] Successfully logged on via JavaSteam! SteamID: {uSteamId}, Account: {accountName}");
-                    onLoginSuccess?.Invoke(uSteamId, accountName);
+                    callbackLoginSuccess?.Invoke(uSteamId, accountName);
                 });
             }
 
@@ -123,7 +123,7 @@ namespace SDG.Unturned
                 EnqueueMainThread(() =>
                 {
                     UnturnedLog.warn($"[SteamBridge] Login failed: {error}");
-                    onLoginFailed?.Invoke(error);
+                    callbackLoginFailed?.Invoke(error);
                 });
             }
         }

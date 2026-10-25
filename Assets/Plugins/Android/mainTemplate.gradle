@@ -1,11 +1,16 @@
 apply plugin: 'com.android.library'
 **APPLY_PLUGINS**
 
+repositories {
+    google()
+    mavenCentral()
+}
+
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 **DEPS**
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
-    implementation 'in.dragonbra:javasteam:1.8.0'
+    implementation 'in.dragonbra:javasteam:1.7.0'
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.78'
     implementation 'com.google.zxing:core:3.5.3'
     implementation 'androidx.multidex:multidex:2.0.1'
 }
@@ -14,12 +19,12 @@ dependencies {
 
 android {
     ndkPath "**NDKPATH**"
+    namespace "com.smartlydressedgames.unturned"
 
     compileSdkVersion **APIVERSION**
     buildToolsVersion '**BUILDTOOLS**'
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
