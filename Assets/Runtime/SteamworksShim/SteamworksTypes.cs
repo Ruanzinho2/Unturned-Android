@@ -2449,11 +2449,11 @@ namespace Steamworks
 		public ESteamNetworkingFakeIPType GetFakeIPType() { return default; }
 		public bool IsFakeIP() { return false; }
 		public void SetLocalHost() {
-			m_eType = ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_LocalHost;
+			m_eType = ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_IPAddress;
 			m_cbSize = 0;
 		}
 		public bool IsLocalHost() {
-			return m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_LocalHost;
+			return m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_IPAddress && m_cbSize == 0;
 		}
 		public bool SetGenericString(string pszString) { return false; }
 		public string GetGenericString() { return string.Empty; }
@@ -2478,8 +2478,6 @@ namespace Steamworks
 		public void ToString(out string buf) {
 			if (m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_SteamID) {
 				buf = $"[SteamID:{GetSteamID64()}]";
-			} else if (m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_LocalHost) {
-				buf = "[LocalHost]";
 			} else {
 				buf = $"[Identity:{m_eType}]";
 			}
