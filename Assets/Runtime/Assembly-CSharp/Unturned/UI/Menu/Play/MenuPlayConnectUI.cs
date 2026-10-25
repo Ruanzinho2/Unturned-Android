@@ -625,9 +625,9 @@ namespace SDG.Unturned
 			steamQrLoginButton.PositionScale_Y = 0.5f;
 			steamQrLoginButton.SizeOffset_X = 600;
 			steamQrLoginButton.SizeOffset_Y = 35;
-			steamQrLoginButton.Text = "Login com Steam (QR Code)";
-			steamQrLoginButton.TooltipText = "Entrar com sua conta oficial da Steam via QR Code pelo celular";
-			steamQrLoginButton.OnClicked += onClickedSteamQrLoginButton;
+			steamQrLoginButton.Text = "Gerenciar Sessão Steam";
+			steamQrLoginButton.TooltipText = "Abrir menu de login e autenticação Steam";
+			steamQrLoginButton.OnClicked += onClickedSteamLoginButton;
 			container.AddChild(steamQrLoginButton);
 
 			SteamBridge.EnsureInitialized();
@@ -691,9 +691,9 @@ namespace SDG.Unturned
 			Provider.UpdateClientSteamCredentials();
 		}
 
-		private static void onClickedSteamQrLoginButton(ISleekElement button)
+		private static void onClickedSteamLoginButton(ISleekElement button)
 		{
-			MenuSteamQrLoginUI.open();
+			MenuSteamLoginUI.open();
 		}
 	}
 }

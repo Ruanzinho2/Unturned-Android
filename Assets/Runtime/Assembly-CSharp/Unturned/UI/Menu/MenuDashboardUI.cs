@@ -29,6 +29,11 @@ namespace SDG.Unturned
 		private static SleekButtonIcon workshopButton;
 		private static SleekButtonIcon exitButton;
 
+		private static ISleekBox profileBox;
+		private static ISleekLabel profileNameLabel;
+		private static ISleekLabel profileIdLabel;
+		private static ISleekButton profileSwitchButton;
+
 		private static ISleekScrollView mainScrollView;
 
 		private static ISleekButton proButton;
@@ -59,7 +64,38 @@ namespace SDG.Unturned
 
 			active = true;
 
+			refreshProfile();
+
 			container.AnimateIntoView();
+		}
+
+		public static void refreshProfile()
+		{
+			if (profileNameLabel == null || profileIdLabel == null) return;
+
+			string name = SteamFriends.GetPersonaName();
+			ulong steamId = SteamUser.GetSteamID().m_SteamID;
+
+			if (SteamUser.BLoggedOn() && steamId != 0 && steamId != 76561198000000000UL)
+			{
+				profileNameLabel.Text = name;
+				profileIdLabel.Text = $"SteamID: {steamId}";
+				profileSwitchButton.Text = "Trocar Conta";
+			}
+			else
+			{
+				profileNameLabel.Text = "Modo Convidado";
+				profileIdLabel.Text = "Offline / Não autenticado";
+				profileSwitchButton.Text = "Entrar";
+			}
+		}
+
+		private static void onClickedProfileSwitchButton(ISleekElement button)
+		{
+			SteamBridge.LogOff();
+			close();
+			MenuTitleUI.close();
+			MenuSteamLoginUI.open();
 		}
 
 		public static void close()
@@ -1525,6 +1561,50 @@ namespace SDG.Unturned
 			playButton.fontSize = ESleekFontSize.Medium;
 			playButton.iconColor = ESleekTint.FOREGROUND;
 			container.AddChild(playButton);
+
+			profileBox = Glazier.Get().CreateBox();
+			profileBox.PositionScale_X = 1f;
+			profileBox.PositionOffset_X = -360;
+			profileBox.PositionOffset_Y = 10;
+			profileBox.SizeOffset_X = 350;
+			profileBox.SizeOffset_Y = 50;
+			profileBox.BackgroundColor = new SleekColor(new Color32(23, 31, 44, 220));
+			container.AddChild(profileBox);
+
+			profileNameLabel = Glazier.Get().CreateLabel();
+			profileNameLabel.PositionOffset_X = 12;
+			profileNameLabel.PositionOffset_Y = 4;
+			profileNameLabel.SizeOffset_X = 220;
+			profileNameLabel.SizeOffset_Y = 22;
+			profileNameLabel.TextAlignment = TextAnchor.MiddleLeft;
+			profileNameLabel.FontSize = ESleekFontSize.Medium;
+			profileNameLabel.TextColor = new SleekColor(new Color32(102, 192, 244, 255));
+			profileBox.AddChild(profileNameLabel);
+
+			profileIdLabel = Glazier.Get().CreateLabel();
+			profileIdLabel.PositionOffset_X = 12;
+			profileIdLabel.PositionOffset_Y = 26;
+			profileIdLabel.SizeOffset_X = 220;
+			profileIdLabel.SizeOffset_Y = 20;
+			profileIdLabel.TextAlignment = TextAnchor.MiddleLeft;
+			profileIdLabel.FontSize = ESleekFontSize.Small;
+			profileIdLabel.TextColor = new SleekColor(new Color32(143, 152, 160, 255));
+			profileBox.AddChild(profileIdLabel);
+
+			profileSwitchButton = Glazier.Get().CreateButton();
+			profileSwitchButton.PositionScale_X = 1f;
+			profileSwitchButton.PositionOffset_X = -115;
+			profileSwitchButton.PositionOffset_Y = 8;
+			profileSwitchButton.SizeOffset_X = 105;
+			profileSwitchButton.SizeOffset_Y = 34;
+			profileSwitchButton.Text = "Trocar Conta";
+			profileSwitchButton.FontSize = ESleekFontSize.Small;
+			profileSwitchButton.BackgroundColor = new SleekColor(new Color32(33, 44, 61, 255));
+			profileSwitchButton.TextColor = new SleekColor(new Color32(220, 222, 223, 255));
+			profileSwitchButton.OnClicked += onClickedProfileSwitchButton;
+			profileBox.AddChild(profileSwitchButton);
+
+			refreshProfile();
 
 			survivorsButton = new SleekButtonIcon(icons.load<Texture2D>("Survivors"));
 			survivorsButton.PositionOffset_Y = 230;

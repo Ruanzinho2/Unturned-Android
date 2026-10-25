@@ -253,10 +253,20 @@ namespace Steamworks {
         [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
         private static extern IntPtr SteamAPI_ISteamFriends_GetPersonaName(IntPtr instance);
 
+        public static Func<string> CustomPersonaNameProvider = null;
         private static string _configuredPersonaName = null;
         public static string ConfiguredPersonaName {
             get {
-                if (_configuredPersonaName == null) {
+                if (string.IsNullOrEmpty(_configuredPersonaName) || _configuredPersonaName == "Survivor") {
+                    if (CustomPersonaNameProvider != null) {
+                        try {
+                            string customName = CustomPersonaNameProvider();
+                            if (!string.IsNullOrEmpty(customName)) {
+                                _configuredPersonaName = customName;
+                                return _configuredPersonaName;
+                            }
+                        } catch {}
+                    }
                     try {
                         IntPtr pFriends = SteamAPI_SteamFriends_v018();
                         if (pFriends != IntPtr.Zero) {
@@ -618,7 +628,7 @@ namespace Steamworks {
             return;
         }
         public static EUserHasLicenseForAppResult UserHasLicenseForApp(CSteamID steamID, AppId_t appID) {
-            return default;
+            return EUserHasLicenseForAppResult.k_EUserHasLicenseForAppResultHasLicense;
         }
         public static bool RequestUserGroupStatus(CSteamID steamIDUser, CSteamID steamIDGroup) {
             return false;
@@ -3607,10 +3617,24 @@ namespace Steamworks {
         [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
         private static extern uint SteamAPI_ISteamUser_GetAuthSessionTicket(IntPtr instance, byte[] pTicket, int cbMaxTicket, out uint pcbTicket, ref SteamNetworkingIdentity pSteamNetworkingIdentity);
 
+        public static Func<bool> LoggedOnCheck = null;
+        public static Func<ulong> CustomSteamIdProvider = null;
+        public delegate byte[] CustomAuthTicketProviderDelegate(uint appId);
+        public static CustomAuthTicketProviderDelegate CustomAuthTicketProvider = null;
+
         private static ulong _configuredSteamId = 0;
         public static ulong ConfiguredSteamID {
             get {
                 if (_configuredSteamId == 0) {
+                    if (CustomSteamIdProvider != null) {
+                        try {
+                            ulong id = CustomSteamIdProvider();
+                            if (id != 0) {
+                                _configuredSteamId = id;
+                                return _configuredSteamId;
+                            }
+                        } catch {}
+                    }
                     try {
                         IntPtr pUser = SteamAPI_SteamUser_v023();
                         if (pUser != IntPtr.Zero) {
@@ -3635,6 +3659,11 @@ namespace Steamworks {
             return default;
         }
         public static bool BLoggedOn() {
+            if (LoggedOnCheck != null) {
+                try {
+                    if (LoggedOnCheck()) return true;
+                } catch {}
+            }
             try {
                 IntPtr pUser = SteamAPI_SteamUser_v023();
                 if (pUser != IntPtr.Zero) return SteamAPI_ISteamUser_BLoggedOn(pUser);
@@ -3679,6 +3708,20 @@ namespace Steamworks {
             return 0;
         }
         public static HAuthTicket GetAuthSessionTicket(byte[] pTicket, int cbMaxTicket, out uint pcbTicket, ref SteamNetworkingIdentity pSteamNetworkingIdentity) {
+            if (CustomAuthTicketProvider != null) {
+                try {
+                    byte[] customTicket = CustomAuthTicketProvider(304930);
+                    if (customTicket != null && customTicket.Length > 0 && pTicket != null && cbMaxTicket >= customTicket.Length) {
+                        Buffer.BlockCopy(customTicket, 0, pTicket, 0, customTicket.Length);
+                        pcbTicket = (uint)customTicket.Length;
+                        SteamShimLogger.Info($"[SteamUser] Successfully obtained genuine AuthSessionTicket via CustomAuthTicketProvider ({pcbTicket} bytes)");
+                        return new HAuthTicket(1);
+                    }
+                } catch (Exception ex) {
+                    SteamShimLogger.Warn($"[SteamUser] Custom ticket provider note: {ex.Message}");
+                }
+            }
+
             try {
                 IntPtr pUser = SteamAPI_SteamUser_v023();
                 if (pUser != IntPtr.Zero) {
@@ -3727,7 +3770,7 @@ namespace Steamworks {
             return;
         }
         public static EUserHasLicenseForAppResult UserHasLicenseForApp(CSteamID steamID, AppId_t appID) {
-            return default;
+            return EUserHasLicenseForAppResult.k_EUserHasLicenseForAppResultHasLicense;
         }
         public static bool BIsBehindNAT() {
             return false;

@@ -348,6 +348,11 @@ namespace SDG.Unturned
 		/// </summary>
 		private void escapeMenu()
 		{
+			if (MenuSteamLoginUI.active)
+			{
+				return;
+			}
+
 			if (Provider.provider.matchmakingService.isAttemptingServerQuery)
 			{
 				Provider.provider.matchmakingService.cancel();
@@ -953,6 +958,7 @@ namespace SDG.Unturned
 				GraphicsSettings.apply("loaded menu");
 
 				dashboard = new MenuDashboardUI();
+				loginUI = new MenuSteamLoginUI();
 
 				if (hasReachedTitleCameraTransform && titleCameraTransform != null)
 				{
@@ -973,6 +979,9 @@ namespace SDG.Unturned
 				}
 
 				UnturnedLog.info("Menu UI ready");
+#if UNITY_ANDROID && !UNITY_EDITOR
+				MenuSteamLoginUI.CheckStartupLogin();
+#endif
 			}
 		}
 
@@ -1014,5 +1023,6 @@ namespace SDG.Unturned
 		}
 
 		private MenuDashboardUI dashboard;
+		public static MenuSteamLoginUI loginUI;
 	}
 }

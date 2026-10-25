@@ -238,7 +238,6 @@ namespace SDG.Unturned
 #endif // !UNITY_64
 
 			connectUI = new MenuPlayConnectUI();
-			steamQrLoginUI = new MenuSteamQrLoginUI();
 
 			serverListUI = new MenuPlayServersUI();
 			serverListUI.PositionOffset_X = 10;
@@ -276,7 +275,6 @@ namespace SDG.Unturned
 		}
 
 		private MenuPlayConnectUI connectUI;
-		private MenuSteamQrLoginUI steamQrLoginUI;
 		public static MenuPlayServersUI serverListUI;
 		public static MenuPlayServerBookmarksUI serverBookmarksUI;
 		public static MenuPlayOnlineSafetyUI onlineSafetyUI;

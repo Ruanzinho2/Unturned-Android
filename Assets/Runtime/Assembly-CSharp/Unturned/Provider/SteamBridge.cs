@@ -16,6 +16,29 @@ namespace SDG.Unturned
             if (isInitialized) return;
             isInitialized = true;
 
+            // Wire up SteamworksShim hooks to SteamBridge
+            SteamUser.LoggedOnCheck = () => IsLoggedOn;
+            SteamUser.CustomSteamIdProvider = () => SteamId;
+            SteamFriends.CustomPersonaNameProvider = () => AccountName;
+            SteamUser.CustomAuthTicketProvider = (appId) => GetAuthSessionTicket(appId);
+
+            // Restore saved credentials if available
+            if (PlayerPrefs.HasKey("SteamID64"))
+            {
+                if (ulong.TryParse(PlayerPrefs.GetString("SteamID64"), out ulong savedId) && savedId != 0)
+                {
+                    SteamUser.ConfiguredSteamID = savedId;
+                }
+            }
+            if (PlayerPrefs.HasKey("SteamPersonaName"))
+            {
+                string savedName = PlayerPrefs.GetString("SteamPersonaName");
+                if (!string.IsNullOrEmpty(savedName))
+                {
+                    SteamFriends.ConfiguredPersonaName = savedName;
+                }
+            }
+
             SDG.Framework.Utilities.TimeUtility.updated += ProcessMainThreadQueue;
 
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -26,7 +49,6 @@ namespace SDG.Unturned
                     bridgeClass.CallStatic("init");
                 }
                 UnturnedLog.info("[SteamBridge] JavaSteam initialized.");
-                CheckAutoLogin();
             }
             catch (Exception ex)
             {
@@ -174,6 +196,31 @@ namespace SDG.Unturned
                 UnturnedLog.warn($"[SteamBridge] LoginWithToken exception: {ex.Message}");
                 onLoginFailed?.Invoke(ex.Message);
             }
+#endif
+        }
+
+        public static void LoginWithCredentials(
+            string accountName,
+            string password,
+            Action<ulong, string> onLoginSuccess,
+            Action<string> onLoginFailed)
+        {
+            EnsureInitialized();
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                using (AndroidJavaClass bridgeClass = new AndroidJavaClass("com.smartlydressedgames.unturned.SteamBridge"))
+                {
+                    bridgeClass.CallStatic("loginWithCredentials", accountName, password, new JavaSteamLoginCallbackProxy(null, onLoginSuccess, onLoginFailed));
+                }
+            }
+            catch (Exception ex)
+            {
+                UnturnedLog.warn($"[SteamBridge] LoginWithCredentials exception: {ex.Message}");
+                onLoginFailed?.Invoke(ex.Message);
+            }
+#else
+            onLoginFailed?.Invoke("Login com credenciais disponível no Android.");
 #endif
         }
 

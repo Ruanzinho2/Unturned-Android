@@ -234,6 +234,48 @@ public class SteamBridge {
         }, "JavaSteamTokenLoginThread").start();
     }
 
+    public static void loginWithCredentials(final String accountName, final String password, final SteamLoginCallback callback) {
+        init();
+        sCurrentCallback = callback;
+
+        new Thread(() -> {
+            try {
+                if (!sClient.isConnected()) {
+                    Log.i(TAG, "Connecting to Steam for credentials login...");
+                    sClient.connect();
+                    long start = System.currentTimeMillis();
+                    while (!sClient.isConnected() && (System.currentTimeMillis() - start < 10000)) {
+                        Thread.sleep(100);
+                    }
+                    if (!sClient.isConnected()) {
+                        notifyFailed("Timeout ao conectar com a Steam.");
+                        return;
+                    }
+                }
+
+                sAccountName = accountName;
+
+                LogOnDetails details = new LogOnDetails();
+                details.setUsername(accountName);
+                details.setPassword(password);
+                sClient.getHandler(SteamUser.class).logOn(details);
+
+                long start = System.currentTimeMillis();
+                while (!sIsLoggedOn && (System.currentTimeMillis() - start < 10000)) {
+                    Thread.sleep(100);
+                }
+
+                if (sIsLoggedOn) {
+                    notifySuccess(sSteamId, sAccountName, sRefreshToken);
+                } else {
+                    notifyFailed("Credenciais incorretas ou Steam Guard ativo. Use o QR Code ao lado.");
+                }
+            } catch (Throwable ex) {
+                notifyFailed("Falha no login com credenciais: " + ex.getMessage());
+            }
+        }, "JavaSteamCredentialsLoginThread").start();
+    }
+
     public static byte[] getAuthSessionTicket(int appId) {
         if (!sIsLoggedOn || sClient == null) {
             Log.w(TAG, "Cannot getAuthSessionTicket: SteamClient not logged on!");
