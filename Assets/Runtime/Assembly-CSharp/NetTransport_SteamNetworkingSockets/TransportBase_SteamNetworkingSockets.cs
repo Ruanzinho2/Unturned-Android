@@ -130,9 +130,8 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 				}
 			}
 
-			// Anything other than None logs quite a bit, so this was changed from Warning back to None.
-			// e.g. Issue #3406
-			return ESteamNetworkingSocketsDebugOutputType.k_ESteamNetworkingSocketsDebugOutputType_Msg;
+			// Output detailed networking trace for debugging multiplayer on Android
+			return ESteamNetworkingSocketsDebugOutputType.k_ESteamNetworkingSocketsDebugOutputType_Everything;
 		}
 
 		protected virtual List<SteamNetworkingConfigValue_t> BuildDefaultConfig()

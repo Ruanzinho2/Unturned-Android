@@ -42,6 +42,24 @@ namespace Steamworks {
         private static extern void GameNetworkingSockets_Kill();
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void SteamAPI_SteamNetworkingIdentity_Clear(IntPtr pIdentity);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void SteamAPI_SteamNetworkingIdentity_SetSteamID64(IntPtr pIdentity, ulong steamID);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern ulong SteamAPI_SteamNetworkingIdentity_GetSteamID64(IntPtr pIdentity);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool SteamAPI_ISteamNetworkingSockets_GetIdentity(IntPtr self, IntPtr pIdentity);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern ESteamNetworkingAvailability SteamAPI_ISteamNetworkingSockets_InitAuthentication(IntPtr self);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern ESteamNetworkingAvailability SteamAPI_ISteamNetworkingSockets_GetAuthenticationStatus(IntPtr self, out SteamNetAuthenticationStatus_t pDetails);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern IntPtr SteamAPI_SteamNetworkingSockets_v009();
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
@@ -148,52 +166,131 @@ namespace Steamworks {
             isInitialized = true;
             try {
                 StringBuilder err = new StringBuilder(1024);
-                if (GameNetworkingSockets_Init(IntPtr.Zero, err)) {
-                    interfacePtr = SteamAPI_SteamNetworkingSockets_v009();
-                    interfaceUtilsPtr = SteamAPI_SteamNetworkingUtils_v003();
-                    isAvailable = (interfacePtr != IntPtr.Zero);
+                IntPtr pIdentity = Marshal.AllocHGlobal(136);
+                try {
+                    for (int i = 0; i < 136; i++) Marshal.WriteByte(pIdentity, i, 0);
+                    ulong steamId = SteamUser.GetSteamID().m_SteamID;
+                    if (steamId == 0) steamId = 76561198000000000UL;
+                    SteamAPI_SteamNetworkingIdentity_SetSteamID64(pIdentity, steamId);
+                    SteamShimLogger.Info($"[SteamNetworkingSockets] GameNetworkingSockets_Init with local SteamID: {steamId}");
 
-                    if (interfaceUtilsPtr != IntPtr.Zero) {
-                        try {
-                            debugOutputCallbackDelegate = OnNativeDebugOutput;
-                            IntPtr fnDbg = Marshal.GetFunctionPointerForDelegate(debugOutputCallbackDelegate);
-                            SteamAPI_ISteamNetworkingUtils_SetDebugOutputFunction(interfaceUtilsPtr, 4 /* k_ESteamNetworkingSocketsDebugOutputType_Msg */, fnDbg);
-                            SteamShimLogger.Info("[SteamNetworkingSockets] Native debug output function registered.");
-                        } catch (Exception dbgEx) {
-                            SteamShimLogger.Warn($"[SteamNetworkingSockets] Debug output registration note: {dbgEx.Message}");
+                    if (GameNetworkingSockets_Init(pIdentity, err)) {
+                        interfacePtr = SteamAPI_SteamNetworkingSockets_v009();
+                        interfaceUtilsPtr = SteamAPI_SteamNetworkingUtils_v003();
+                        isAvailable = (interfacePtr != IntPtr.Zero);
+
+                        if (interfaceUtilsPtr != IntPtr.Zero) {
+                            try {
+                                debugOutputCallbackDelegate = OnNativeDebugOutput;
+                                IntPtr fnDbg = Marshal.GetFunctionPointerForDelegate(debugOutputCallbackDelegate);
+                                // Set debug detail to 8 (Everything: full packet breakdown, crypto state, network transitions)
+                                SteamAPI_ISteamNetworkingUtils_SetDebugOutputFunction(interfaceUtilsPtr, 8 /* k_ESteamNetworkingSocketsDebugOutputType_Everything */, fnDbg);
+                                SteamShimLogger.Info("[SteamNetworkingSockets] Native debug output function registered at level Everything (8).");
+                            } catch (Exception dbgEx) {
+                                SteamShimLogger.Warn($"[SteamNetworkingSockets] Debug output registration note: {dbgEx.Message}");
+                            }
+
+                            try {
+                                // Enable verbose packet decoding and transport logging
+                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 13 /* LogLevel_AckRTT */, 8);
+                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 14 /* LogLevel_PacketDecode */, 8);
+                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 15 /* LogLevel_Message */, 8);
+                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 16 /* LogLevel_PacketGaps */, 8);
+                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 17 /* LogLevel_P2PRendezvous */, 8);
+                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 18 /* LogLevel_SDRRelayPings */, 8);
+
+                                bool gCfg = SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 23 /* k_ESteamNetworkingConfig_IP_AllowWithoutAuth */, 2);
+                                SteamShimLogger.Info($"[SteamNetworkingSockets] SetGlobalConfigValueInt32 IP_AllowWithoutAuth=2 result: {gCfg}, log levels set to Everything (8)");
+                            } catch (Exception cfgEx) {
+                                SteamShimLogger.Warn($"[SteamNetworkingSockets] Global config note: {cfgEx.Message}");
+                            }
+
+                            try {
+                                statusChangedCallbackDelegate = OnNativeConnectionStatusChanged;
+                                IntPtr fnStatus = Marshal.GetFunctionPointerForDelegate(statusChangedCallbackDelegate);
+                                SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetConnectionStatusChanged(interfaceUtilsPtr, fnStatus);
+
+                                authChangedCallbackDelegate = OnNativeAuthenticationStatusChanged;
+                                IntPtr fnAuth = Marshal.GetFunctionPointerForDelegate(authChangedCallbackDelegate);
+                                SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetAuthenticationStatusChanged(interfaceUtilsPtr, fnAuth);
+
+                                SteamShimLogger.Info("[SteamNetworkingSockets] Native global status and auth callbacks registered.");
+                            } catch (Exception cbEx) {
+                                SteamShimLogger.Warn($"[SteamNetworkingSockets] Callback registration note: {cbEx.Message}");
+                            }
                         }
 
-                        try {
-                            bool gCfg = SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 23 /* k_ESteamNetworkingConfig_IP_AllowWithoutAuth */, 2);
-                            SteamShimLogger.Info($"[SteamNetworkingSockets] SetGlobalConfigValueInt32 IP_AllowWithoutAuth=2 result: {gCfg}");
-                        } catch (Exception cfgEx) {
-                            SteamShimLogger.Warn($"[SteamNetworkingSockets] Global config note: {cfgEx.Message}");
+                        if (interfacePtr != IntPtr.Zero) {
+                            try {
+                                IntPtr pCheckIdent = Marshal.AllocHGlobal(136);
+                                for (int i = 0; i < 136; i++) Marshal.WriteByte(pCheckIdent, i, 0);
+                                if (SteamAPI_ISteamNetworkingSockets_GetIdentity(interfacePtr, pCheckIdent)) {
+                                    ulong resolvedSteamId = SteamAPI_SteamNetworkingIdentity_GetSteamID64(pCheckIdent);
+                                    SteamShimLogger.Info($"[SteamNetworkingSockets] GNS verified local identity SteamID: {resolvedSteamId}");
+                                }
+                                Marshal.FreeHGlobal(pCheckIdent);
+                            } catch (Exception idEx) {
+                                SteamShimLogger.Warn($"[SteamNetworkingSockets] GetIdentity verification note: {idEx.Message}");
+                            }
                         }
 
-                        try {
-                            statusChangedCallbackDelegate = OnNativeConnectionStatusChanged;
-                            IntPtr fnStatus = Marshal.GetFunctionPointerForDelegate(statusChangedCallbackDelegate);
-                            SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetConnectionStatusChanged(interfaceUtilsPtr, fnStatus);
-
-                            authChangedCallbackDelegate = OnNativeAuthenticationStatusChanged;
-                            IntPtr fnAuth = Marshal.GetFunctionPointerForDelegate(authChangedCallbackDelegate);
-                            SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetAuthenticationStatusChanged(interfaceUtilsPtr, fnAuth);
-
-                            SteamShimLogger.Info("[SteamNetworkingSockets] Native global status and auth callbacks registered.");
-                        } catch (Exception cbEx) {
-                            SteamShimLogger.Warn($"[SteamNetworkingSockets] Callback registration note: {cbEx.Message}");
-                        }
+                        SteamShimLogger.Info($"[SteamNetworkingSockets] Initialized successfully. interfacePtr={interfacePtr} utilsPtr={interfaceUtilsPtr}");
+                    } else {
+                        SteamShimLogger.Error($"[SteamNetworkingSockets] GameNetworkingSockets_Init failed: {err}");
+                        isAvailable = false;
                     }
-                    SteamShimLogger.Info($"[SteamNetworkingSockets] Initialized successfully. interfacePtr={interfacePtr} utilsPtr={interfaceUtilsPtr}");
-                } else {
-                    SteamShimLogger.Error($"[SteamNetworkingSockets] GameNetworkingSockets_Init failed: {err}");
-                    isAvailable = false;
+                } finally {
+                    if (pIdentity != IntPtr.Zero) {
+                        Marshal.FreeHGlobal(pIdentity);
+                    }
                 }
             } catch (Exception ex) {
                 SteamShimLogger.Error($"[SteamNetworkingSockets] EnsureInitialized exception: {ex}");
                 isAvailable = false;
             }
             return isAvailable;
+        }
+
+        public static bool GetIdentity(out SteamNetworkingIdentity pIdentity) {
+            pIdentity = default;
+            if (EnsureInitialized() && interfacePtr != IntPtr.Zero) {
+                IntPtr pNativeIdentity = Marshal.AllocHGlobal(136);
+                try {
+                    for (int i = 0; i < 136; i++) Marshal.WriteByte(pNativeIdentity, i, 0);
+                    if (SteamAPI_ISteamNetworkingSockets_GetIdentity(interfacePtr, pNativeIdentity)) {
+                        pIdentity = Marshal.PtrToStructure<SteamNetworkingIdentity>(pNativeIdentity);
+                        return true;
+                    }
+                } catch (Exception ex) {
+                    SteamShimLogger.Warn($"[SteamNetworkingSockets] GetIdentity exception: {ex.Message}");
+                } finally {
+                    Marshal.FreeHGlobal(pNativeIdentity);
+                }
+            }
+            return false;
+        }
+
+        public static ESteamNetworkingAvailability InitAuthentication() {
+            if (EnsureInitialized() && interfacePtr != IntPtr.Zero) {
+                try {
+                    return SteamAPI_ISteamNetworkingSockets_InitAuthentication(interfacePtr);
+                } catch (Exception ex) {
+                    SteamShimLogger.Warn($"[SteamNetworkingSockets] InitAuthentication note: {ex.Message}");
+                }
+            }
+            return ESteamNetworkingAvailability.k_ESteamNetworkingAvailability_Current;
+        }
+
+        public static ESteamNetworkingAvailability GetAuthenticationStatus(out SteamNetAuthenticationStatus_t pDetails) {
+            pDetails = default;
+            if (EnsureInitialized() && interfacePtr != IntPtr.Zero) {
+                try {
+                    return SteamAPI_ISteamNetworkingSockets_GetAuthenticationStatus(interfacePtr, out pDetails);
+                } catch (Exception ex) {
+                    SteamShimLogger.Warn($"[SteamNetworkingSockets] GetAuthenticationStatus note: {ex.Message}");
+                }
+            }
+            return ESteamNetworkingAvailability.k_ESteamNetworkingAvailability_Current;
         }
 
         public static HSteamNetConnection ConnectByIPAddress(ref SteamNetworkingIPAddr address, int nOptions, SteamNetworkingConfigValue_t[] pOptions) {

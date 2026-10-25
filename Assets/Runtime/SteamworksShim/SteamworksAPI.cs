@@ -1115,15 +1115,13 @@ namespace Steamworks {
             return default;
         }
         public static bool GetIdentity(out SteamNetworkingIdentity pIdentity) {
-            pIdentity = default;
-            return false;
+            return NativeGameNetworkingSockets.GetIdentity(out pIdentity);
         }
         public static ESteamNetworkingAvailability InitAuthentication() {
-            return ESteamNetworkingAvailability.k_ESteamNetworkingAvailability_Current;
+            return NativeGameNetworkingSockets.InitAuthentication();
         }
         public static ESteamNetworkingAvailability GetAuthenticationStatus(out SteamNetAuthenticationStatus_t pDetails) {
-            pDetails = default;
-            return default;
+            return NativeGameNetworkingSockets.GetAuthenticationStatus(out pDetails);
         }
         public static HSteamNetPollGroup CreatePollGroup() {
             return HSteamNetPollGroup.Invalid;
@@ -2812,15 +2810,13 @@ namespace Steamworks {
             return default;
         }
         public static bool GetIdentity(out SteamNetworkingIdentity pIdentity) {
-            pIdentity = default;
-            return false;
+            return NativeGameNetworkingSockets.GetIdentity(out pIdentity);
         }
         public static ESteamNetworkingAvailability InitAuthentication() {
-            return ESteamNetworkingAvailability.k_ESteamNetworkingAvailability_Current;
+            return NativeGameNetworkingSockets.InitAuthentication();
         }
         public static ESteamNetworkingAvailability GetAuthenticationStatus(out SteamNetAuthenticationStatus_t pDetails) {
-            pDetails = default;
-            return default;
+            return NativeGameNetworkingSockets.GetAuthenticationStatus(out pDetails);
         }
         public static HSteamNetPollGroup CreatePollGroup() {
             return HSteamNetPollGroup.Invalid;
@@ -3985,7 +3981,33 @@ namespace Steamworks {
     }
 
     public static class SteamAPI {
+        private const string SteamApiLib = "steam_api";
+
+        [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool SteamAPI_InitAnonymousUser();
+
+        [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int SteamAPI_InitFlat(byte[] pOutErr);
+
+        [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void SteamAPI_RunCallbacks();
+
         public static bool Init() {
+            NativeGameNetworkingSockets.EnsureInitialized();
+            try {
+                byte[] errBuf = new byte[1024];
+                int flatRes = SteamAPI_InitFlat(errBuf);
+                string errStr = System.Text.Encoding.UTF8.GetString(errBuf).TrimEnd('\0');
+                SteamShimLogger.Info($"[SteamAPI] SteamAPI_InitFlat result: {flatRes}, err: '{errStr}'");
+            } catch (Exception ex) {
+                SteamShimLogger.Warn($"[SteamAPI] SteamAPI_InitFlat note: {ex.Message}");
+            }
+            try {
+                bool anonRes = SteamAPI_InitAnonymousUser();
+                SteamShimLogger.Info($"[SteamAPI] SteamAPI_InitAnonymousUser result: {anonRes}");
+            } catch (Exception ex) {
+                SteamShimLogger.Warn($"[SteamAPI] SteamAPI_InitAnonymousUser note: {ex.Message}");
+            }
             return true;
         }
         public static void Shutdown() {
@@ -4000,6 +4022,9 @@ namespace Steamworks {
         public static void RunCallbacks() {
             A2SPingQuery.RunCallbacks();
             NativeGameNetworkingSockets.RunCallbacks();
+            try {
+                SteamAPI_RunCallbacks();
+            } catch {}
         }
         public static bool IsSteamRunning() {
             return false;

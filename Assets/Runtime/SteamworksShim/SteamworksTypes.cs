@@ -2386,22 +2386,18 @@ namespace Steamworks
 	/// facilitate forward compatibility.  (Old client code can handle an identity type that
 	/// it doesn't understand.)
 	[System.Serializable]
-	[StructLayout(LayoutKind.Sequential, Pack = 1)]
+	[StructLayout(LayoutKind.Explicit, Size = 136)]
 	public struct SteamNetworkingIdentity : System.IEquatable<SteamNetworkingIdentity>
 	{
 		/// Type of identity.
+		[FieldOffset(0)]
 		public ESteamNetworkingIdentityType m_eType;
 
-		//
-		// Internal representation.  Don't access this directly, use the accessors!
-		//
-		// Number of bytes that are relevant below.  This MUST ALWAYS be
-		// set.  (Use the accessors!)  This is important to enable old code to work
-		// with new identity types.
+		[FieldOffset(4)]
 		private int m_cbSize;
 
-		[MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
-		private uint[] m_reserved; // Pad structure to leave easy room for future expansion
+		[FieldOffset(8)]
+		private ulong m_steamID64;
 
 		// Max sizes
 		public const int k_cchMaxString = 128; // Max length of the buffer needed to hold any identity, formatted in string format by ToString
@@ -2409,109 +2405,86 @@ namespace Steamworks
 		public const int k_cchMaxXboxPairwiseID = 33; // Including terminating '\0'
 		public const int k_cbMaxGenericBytes = 32;
 
-		//
-		// Get/Set in various formats.
-		//
-
-		public void Clear() { }
+		public void Clear() {
+			m_eType = ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_Invalid;
+			m_cbSize = 0;
+			m_steamID64 = 0;
+		}
 
 		// Return true if we are the invalid type.  Does not make any other validity checks (e.g. is SteamID actually valid)
-		public bool IsInvalid() { return false; }
+		public bool IsInvalid() {
+			return m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_Invalid;
+		}
 
-		public void SetSteamID(CSteamID steamID) { }
+		public void SetSteamID(CSteamID steamID) {
+			m_eType = ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_SteamID;
+			m_cbSize = 8;
+			m_steamID64 = steamID.m_SteamID;
+		}
 
-		// Return black CSteamID (!IsValid()) if identity is not a SteamID
-		public CSteamID GetSteamID() { return new CSteamID(76561198000000000UL); }
+		public CSteamID GetSteamID() {
+			return new CSteamID(GetSteamID64());
+		}
 
-		// Takes SteamID as raw 64-bit number
-		public void SetSteamID64(ulong steamID) { }
+		public void SetSteamID64(ulong steamID) {
+			m_eType = ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_SteamID;
+			m_cbSize = 8;
+			m_steamID64 = steamID;
+		}
 
-		// Returns 0 if identity is not SteamID
-		public ulong GetSteamID64() { return 76561198000000000UL; }
+		public ulong GetSteamID64() {
+			return m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_SteamID ? m_steamID64 : 0;
+		}
 
-		// Returns false if invalid length
 		public bool SetXboxPairwiseID(string pszString) { return false; }
-
-		// Returns nullptr if not Xbox ID
 		public string GetXboxPairwiseID() { return string.Empty; }
-
 		public void SetPSNID(ulong id) { }
-
-		// Returns 0 if not PSN
 		public ulong GetPSNID() { return 0; }
-
 		public void SetStadiaID(ulong id) { }
-
-		// Returns 0 if not Stadia
 		public ulong GetStadiaID() { return 0; }
-
-		// Set to specified IP:port
 		public void SetIPAddr(SteamNetworkingIPAddr addr) { }
-
-		// returns null if we are not an IP address.
-		public SteamNetworkingIPAddr GetIPAddr(){
-			throw new System.NotImplementedException();
-			// TODO: Should SteamNetworkingIPAddr be a class?
-			//       or should this return some kind of pointer instead?
-			//return NativeMethods.SteamAPI_SteamNetworkingIdentity_GetIPAddr(ref this);
-		}
-
+		public SteamNetworkingIPAddr GetIPAddr() { return default; }
 		public void SetIPv4Addr(uint nIPv4, ushort nPort) { }
-
-		// returns 0 if we are not an IPv4 address.
 		public uint GetIPv4() { return 0; }
-
 		public ESteamNetworkingFakeIPType GetFakeIPType() { return default; }
-
-		public bool IsFakeIP() {
-			return GetFakeIPType() > ESteamNetworkingFakeIPType.k_ESteamNetworkingFakeIPType_NotFake;
+		public bool IsFakeIP() { return false; }
+		public void SetLocalHost() {
+			m_eType = ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_LocalHost;
+			m_cbSize = 0;
 		}
-
-		// "localhost" is equivalent for many purposes to "anonymous."  Our remote
-		// will identify us by the network address we use.
-		// Set to localhost.  (We always use IPv6 ::1 for this, not 127.0.0.1)
-		public void SetLocalHost() { }
-
-		// Return true if this identity is localhost.
-		public bool IsLocalHost() { return false; }
-
-		// Returns false if invalid length
+		public bool IsLocalHost() {
+			return m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_LocalHost;
+		}
 		public bool SetGenericString(string pszString) { return false; }
-
-		// Returns nullptr if not generic string type
 		public string GetGenericString() { return string.Empty; }
-
-		// Returns false if invalid size.
 		public bool SetGenericBytes(byte[] data, uint cbLen) { return false; }
-
-		// Returns null if not generic bytes type
 		public byte[] GetGenericBytes(out int cbLen) {
-			throw new System.NotImplementedException();
-			//return NativeMethods.SteamAPI_SteamNetworkingIdentity_GetGenericBytes(ref this, out cbLen);
+			cbLen = 0;
+			return null;
 		}
 
-		/// See if two identities are identical
-		public bool Equals(SteamNetworkingIdentity x) { return false; }
+		public bool Equals(SteamNetworkingIdentity x) {
+			return m_eType == x.m_eType && m_steamID64 == x.m_steamID64;
+		}
 
-		/// Print to a human-readable string.  This is suitable for debug messages
-		/// or any other time you need to encode the identity as a string.  It has a
-		/// URL-like format (type:<type-data>).  Your buffer should be at least
-		/// k_cchMaxString bytes big to avoid truncation.
-		///
-		/// See also SteamNetworkingIPAddrRender
+		public override bool Equals(object obj) {
+			return obj is SteamNetworkingIdentity other && Equals(other);
+		}
+
+		public override int GetHashCode() {
+			return (int)m_eType ^ m_steamID64.GetHashCode();
+		}
+
 		public void ToString(out string buf) {
 			if (m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_SteamID) {
 				buf = $"[SteamID:{GetSteamID64()}]";
+			} else if (m_eType == ESteamNetworkingIdentityType.k_ESteamNetworkingIdentityType_LocalHost) {
+				buf = "[LocalHost]";
 			} else {
-				buf = "[Identity]";
+				buf = $"[Identity:{m_eType}]";
 			}
 		}
 
-		/// Parse back a string that was generated using ToString.  If we don't understand the
-		/// string, but it looks "reasonable" (it matches the pattern type:<type-data> and doesn't
-		/// have any funky characters, etc), then we will return true, and the type is set to
-		/// k_ESteamNetworkingIdentityType_UnknownType.  false will only be returned if the string
-		/// looks invalid.
 		public bool ParseString(string pszStr) { return false; }
 	}
 }
