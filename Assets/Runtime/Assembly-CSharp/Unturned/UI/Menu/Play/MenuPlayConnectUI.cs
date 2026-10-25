@@ -59,6 +59,17 @@ namespace SDG.Unturned
 
 			active = true;
 
+			string savedId = UnityEngine.PlayerPrefs.GetString("SteamID64", "");
+			if (ulong.TryParse(savedId, out ulong parsedId) && parsedId > 0)
+			{
+				SteamUser.ConfiguredSteamID = parsedId;
+			}
+			string savedName = UnityEngine.PlayerPrefs.GetString("SteamPersonaName", "");
+			if (!string.IsNullOrEmpty(savedName))
+			{
+				SteamFriends.ConfiguredPersonaName = savedName;
+			}
+
 			if (steamIdField != null)
 			{
 				steamIdField.Text = SteamUser.ConfiguredSteamID != 0 ? SteamUser.ConfiguredSteamID.ToString() : "76561198000000000";
@@ -630,6 +641,8 @@ namespace SDG.Unturned
 			if (ulong.TryParse(text.Trim(), out ulong id) && id > 0)
 			{
 				SteamUser.ConfiguredSteamID = id;
+				UnityEngine.PlayerPrefs.SetString("SteamID64", id.ToString());
+				UnityEngine.PlayerPrefs.Save();
 				Provider.UpdateClientSteamCredentials();
 			}
 		}
@@ -639,6 +652,8 @@ namespace SDG.Unturned
 			if (!string.IsNullOrEmpty(text))
 			{
 				SteamFriends.ConfiguredPersonaName = text.Trim();
+				UnityEngine.PlayerPrefs.SetString("SteamPersonaName", text.Trim());
+				UnityEngine.PlayerPrefs.Save();
 				Provider.UpdateClientSteamCredentials();
 			}
 		}

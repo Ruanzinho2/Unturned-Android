@@ -477,6 +477,16 @@ namespace SDG.Unturned
 
 		public static void UpdateClientSteamCredentials()
 		{
+			string savedId = UnityEngine.PlayerPrefs.GetString("SteamID64", "");
+			if (ulong.TryParse(savedId, out ulong parsedId) && parsedId > 0)
+			{
+				SteamUser.ConfiguredSteamID = parsedId;
+			}
+			string savedName = UnityEngine.PlayerPrefs.GetString("SteamPersonaName", "");
+			if (!string.IsNullOrEmpty(savedName))
+			{
+				SteamFriends.ConfiguredPersonaName = savedName;
+			}
 			_user = SteamUser.GetSteamID();
 			_client = _user;
 			_clientName = SteamFriends.GetPersonaName();

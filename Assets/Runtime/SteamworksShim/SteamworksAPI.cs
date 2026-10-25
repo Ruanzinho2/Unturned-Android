@@ -257,32 +257,25 @@ namespace Steamworks {
         public static string ConfiguredPersonaName {
             get {
                 if (_configuredPersonaName == null) {
-                    string saved = UnityEngine.PlayerPrefs.GetString("SteamPersonaName", "");
-                    if (!string.IsNullOrEmpty(saved)) {
-                        _configuredPersonaName = saved;
-                    } else {
-                        try {
-                            IntPtr pFriends = SteamAPI_SteamFriends_v018();
-                            if (pFriends != IntPtr.Zero) {
-                                IntPtr pName = SteamAPI_ISteamFriends_GetPersonaName(pFriends);
-                                if (pName != IntPtr.Zero) {
-                                    string nativeName = Marshal.PtrToStringAnsi(pName);
-                                    if (!string.IsNullOrEmpty(nativeName)) {
-                                        _configuredPersonaName = nativeName;
-                                        return _configuredPersonaName;
-                                    }
+                    try {
+                        IntPtr pFriends = SteamAPI_SteamFriends_v018();
+                        if (pFriends != IntPtr.Zero) {
+                            IntPtr pName = SteamAPI_ISteamFriends_GetPersonaName(pFriends);
+                            if (pName != IntPtr.Zero) {
+                                string nativeName = Marshal.PtrToStringAnsi(pName);
+                                if (!string.IsNullOrEmpty(nativeName)) {
+                                    _configuredPersonaName = nativeName;
+                                    return _configuredPersonaName;
                                 }
                             }
-                        } catch {}
-                        _configuredPersonaName = "Survivor";
-                    }
+                        }
+                    } catch {}
+                    _configuredPersonaName = "Survivor";
                 }
                 return _configuredPersonaName;
             }
             set {
                 _configuredPersonaName = value;
-                UnityEngine.PlayerPrefs.SetString("SteamPersonaName", value);
-                UnityEngine.PlayerPrefs.Save();
                 SteamShimLogger.Info($"[SteamFriends] Updated ConfiguredPersonaName to: {value}");
             }
         }
@@ -3618,29 +3611,22 @@ namespace Steamworks {
         public static ulong ConfiguredSteamID {
             get {
                 if (_configuredSteamId == 0) {
-                    string saved = UnityEngine.PlayerPrefs.GetString("SteamID64", "");
-                    if (ulong.TryParse(saved, out ulong parsed) && parsed > 0) {
-                        _configuredSteamId = parsed;
-                    } else {
-                        try {
-                            IntPtr pUser = SteamAPI_SteamUser_v023();
-                            if (pUser != IntPtr.Zero) {
-                                ulong nativeId = SteamAPI_ISteamUser_GetSteamID(pUser);
-                                if (nativeId != 0) {
-                                    _configuredSteamId = nativeId;
-                                    return _configuredSteamId;
-                                }
+                    try {
+                        IntPtr pUser = SteamAPI_SteamUser_v023();
+                        if (pUser != IntPtr.Zero) {
+                            ulong nativeId = SteamAPI_ISteamUser_GetSteamID(pUser);
+                            if (nativeId != 0) {
+                                _configuredSteamId = nativeId;
+                                return _configuredSteamId;
                             }
-                        } catch {}
-                        _configuredSteamId = 76561198000000000UL;
-                    }
+                        }
+                    } catch {}
+                    _configuredSteamId = 76561198000000000UL;
                 }
                 return _configuredSteamId;
             }
             set {
                 _configuredSteamId = value;
-                UnityEngine.PlayerPrefs.SetString("SteamID64", value.ToString());
-                UnityEngine.PlayerPrefs.Save();
                 SteamShimLogger.Info($"[SteamUser] Updated ConfiguredSteamID to: {value}");
             }
         }
