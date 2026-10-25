@@ -628,7 +628,7 @@ namespace Steamworks {
             return;
         }
         public static EUserHasLicenseForAppResult UserHasLicenseForApp(CSteamID steamID, AppId_t appID) {
-            return EUserHasLicenseForAppResult.k_EUserHasLicenseForAppResultHasLicense;
+            return EUserHasLicenseForAppResult.k_EUserHasLicenseResultHasLicense;
         }
         public static bool RequestUserGroupStatus(CSteamID steamIDUser, CSteamID steamIDGroup) {
             return false;
@@ -3770,7 +3770,7 @@ namespace Steamworks {
             return;
         }
         public static EUserHasLicenseForAppResult UserHasLicenseForApp(CSteamID steamID, AppId_t appID) {
-            return EUserHasLicenseForAppResult.k_EUserHasLicenseForAppResultHasLicense;
+            return EUserHasLicenseForAppResult.k_EUserHasLicenseResultHasLicense;
         }
         public static bool BIsBehindNAT() {
             return false;
