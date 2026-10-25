@@ -143,11 +143,6 @@ namespace SDG.Unturned
 
 		private void onClickedServer(SleekServer server, SteamServerAdvertisement info)
 		{
-			if (info.isPro && !Provider.isPro)
-			{
-				return;
-			}
-
 			MenuPlayServerInfoUI.open(info, string.Empty, MenuPlayServerInfoUI.EServerInfoOpenContext.SERVERS);
 			close();
 		}

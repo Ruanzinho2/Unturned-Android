@@ -504,35 +504,29 @@ namespace SDG.Provider
 			{
 				SteamServerAdvertisement info = new SteamServerAdvertisement(data, SteamServerAdvertisement.EInfoSource.DirectConnect);
 
-				if (!info.isPro || SDG.Unturned.Provider.isPro)
+				// Android: Gold/Pro check removed so client never blocks connection with "You require Gold to join this server"
+				bool shouldImmediatelyConnect = false;
+
+				if (autoJoinServerQuery && (!info.isPassworded || !string.IsNullOrEmpty(connectionInfo.password)))
 				{
-					bool shouldImmediatelyConnect = false;
+					shouldImmediatelyConnect = true;
+				}
 
-					if (autoJoinServerQuery && (!info.isPassworded || !string.IsNullOrEmpty(connectionInfo.password)))
-					{
-						shouldImmediatelyConnect = true;
-					}
-
-					if (shouldImmediatelyConnect)
-					{
-						ServerConnectParameters parameters = new ServerConnectParameters(new IPv4Address(info.ip), info.queryPort, info.connectionPort, connectionInfo.password);
-						SDG.Unturned.Provider.connect(parameters, info, null);
-					}
-					else
-					{
-						ServerListCurationInput curationInput = new ServerListCurationInput(info);
-						ServerListCurationOutput curationOutput = default;
-						ServerListCuration.Get().EvaluateMergedRules(curationInput, ref curationOutput);
-						info.serverCurationLabels = curationOutput.labels;
-
-						MenuUI.closeAll();
-						MenuUI.closeAlert();
-						MenuPlayServerInfoUI.open(info, connectionInfo.password, serverQueryContext);
-					}
+				if (shouldImmediatelyConnect)
+				{
+					ServerConnectParameters parameters = new ServerConnectParameters(new IPv4Address(info.ip), info.queryPort, info.connectionPort, connectionInfo.password);
+					SDG.Unturned.Provider.connect(parameters, info, null);
 				}
 				else
 				{
-					SDG.Unturned.Provider._connectionFailureInfo = ESteamConnectionFailureInfo.PRO_SERVER;
+					ServerListCurationInput curationInput = new ServerListCurationInput(info);
+					ServerListCurationOutput curationOutput = default;
+					ServerListCuration.Get().EvaluateMergedRules(curationInput, ref curationOutput);
+					info.serverCurationLabels = curationOutput.labels;
+
+					MenuUI.closeAll();
+					MenuUI.closeAlert();
+					MenuPlayServerInfoUI.open(info, connectionInfo.password, serverQueryContext);
 				}
 			}
 			else

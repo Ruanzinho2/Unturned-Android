@@ -921,7 +921,7 @@ namespace SDG.Unturned
 				_mode = EGameMode.NORMAL;
 				_cameraMode = ECameraMode.FIRST;
 				monetization = EServerMonetizationTag.Unspecified;
-				_isPro = true;
+				_isPro = false;
 #if WITH_THIRDPARTYAC
 				IsThirdpartyAntiCheatEnabled = false;
 #endif

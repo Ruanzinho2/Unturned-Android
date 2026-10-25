@@ -643,7 +643,11 @@ namespace SDG.Unturned
 		private static bool _isClient;
 		public static bool isClient => _isClient;
 
+#if UNITY_ANDROID
+		private static bool _isPro = true;
+#else
 		private static bool _isPro;
+#endif
 		public static bool isPro => _isPro;
 
 		private static bool _isConnected;
@@ -6849,10 +6853,14 @@ namespace SDG.Unturned
 			provider.workshopService.refreshUGC();
 			provider.workshopService.refreshPublished();
 
+#if UNITY_ANDROID
+			_isPro = true;
+#else
 			if (shouldCheckForGoldUpgrade)
 			{
 				_isPro = SteamApps.BIsSubscribedApp(PRO_ID);
 			}
+#endif
 
 			UnturnedLog.info($"Game version: {APP_VERSION} Engine version: {Application.unityVersion}");
 			if (_modInfo != null)
