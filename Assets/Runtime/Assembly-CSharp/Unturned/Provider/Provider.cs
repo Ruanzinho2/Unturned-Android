@@ -475,6 +475,14 @@ namespace SDG.Unturned
 		private static string _clientName;
 		public static string clientName => _clientName;
 
+		public static void UpdateClientSteamCredentials()
+		{
+			_user = SteamUser.GetSteamID();
+			_client = _user;
+			_clientName = SteamFriends.GetPersonaName();
+			UnturnedLog.info($"Updated Steam credentials: ID={_user}, Name={_clientName}");
+		}
+
 		internal static List<SteamPlayer> _clients = new List<SteamPlayer>();
 		internal static Dictionary<ITransportConnection, SteamPlayer> _transportConnectionToPlayerMap = new Dictionary<ITransportConnection, SteamPlayer>();
 		public static List<SteamPlayer> clients => _clients;

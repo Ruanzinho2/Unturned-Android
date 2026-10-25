@@ -1,0 +1,35 @@
+fileFormatVersion: 2
+guid: 521c98bb92784b7cad6188ae4e54d7c8
+PluginImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  iconMap: {}
+  executionOrder: {}
+  defineConstraints: []
+  isPreloaded: 0
+  isOverridable: 0
+  isExplicitlyReferenced: 0
+  validateReferences: 1
+  platformData:
+  - first:
+      Android: CPU
+    second: ARM64
+  - first:
+      Any: 
+    second:
+      Enabled: 0
+      Exclude Editor: 1
+      Exclude Linux: 1
+      Exclude Linux64: 1
+      Exclude LinuxUniversal: 1
+      Exclude OSXUniversal: 1
+      Exclude Win: 1
+      Exclude Win64: 1
+  - first:
+      Editor: Editor
+    second:
+      Enabled: 0
+  - first:
+      Android: Android
+    second:
+      Enabled: 1

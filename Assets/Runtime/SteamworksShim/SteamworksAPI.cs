@@ -245,8 +245,50 @@ namespace Steamworks {
     }
 
     public static class SteamFriends {
+        private const string SteamApiLib = "steam_api";
+
+        [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr SteamAPI_SteamFriends_v018();
+
+        [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr SteamAPI_ISteamFriends_GetPersonaName(IntPtr instance);
+
+        private static string _configuredPersonaName = null;
+        public static string ConfiguredPersonaName {
+            get {
+                if (_configuredPersonaName == null) {
+                    string saved = UnityEngine.PlayerPrefs.GetString("SteamPersonaName", "");
+                    if (!string.IsNullOrEmpty(saved)) {
+                        _configuredPersonaName = saved;
+                    } else {
+                        try {
+                            IntPtr pFriends = SteamAPI_SteamFriends_v018();
+                            if (pFriends != IntPtr.Zero) {
+                                IntPtr pName = SteamAPI_ISteamFriends_GetPersonaName(pFriends);
+                                if (pName != IntPtr.Zero) {
+                                    string nativeName = Marshal.PtrToStringAnsi(pName);
+                                    if (!string.IsNullOrEmpty(nativeName)) {
+                                        _configuredPersonaName = nativeName;
+                                        return _configuredPersonaName;
+                                    }
+                                }
+                            }
+                        } catch {}
+                        _configuredPersonaName = "Survivor";
+                    }
+                }
+                return _configuredPersonaName;
+            }
+            set {
+                _configuredPersonaName = value;
+                UnityEngine.PlayerPrefs.SetString("SteamPersonaName", value);
+                UnityEngine.PlayerPrefs.Save();
+                SteamShimLogger.Info($"[SteamFriends] Updated ConfiguredPersonaName to: {value}");
+            }
+        }
+
         public static string GetPersonaName() {
-            return "Survivor";
+            return ConfiguredPersonaName;
         }
         public static SteamAPICall_t SetPersonaName(string pchPersonaName) {
             return SteamAPICall_t.Invalid;
@@ -3558,14 +3600,63 @@ namespace Steamworks {
     }
 
     public static class SteamUser {
+        private const string SteamApiLib = "steam_api";
+
+        [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr SteamAPI_SteamUser_v023();
+
+        [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
+        private static extern ulong SteamAPI_ISteamUser_GetSteamID(IntPtr instance);
+
+        [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool SteamAPI_ISteamUser_BLoggedOn(IntPtr instance);
+
+        [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
+        private static extern uint SteamAPI_ISteamUser_GetAuthSessionTicket(IntPtr instance, byte[] pTicket, int cbMaxTicket, out uint pcbTicket, ref SteamNetworkingIdentity pSteamNetworkingIdentity);
+
+        private static ulong _configuredSteamId = 0;
+        public static ulong ConfiguredSteamID {
+            get {
+                if (_configuredSteamId == 0) {
+                    string saved = UnityEngine.PlayerPrefs.GetString("SteamID64", "");
+                    if (ulong.TryParse(saved, out ulong parsed) && parsed > 0) {
+                        _configuredSteamId = parsed;
+                    } else {
+                        try {
+                            IntPtr pUser = SteamAPI_SteamUser_v023();
+                            if (pUser != IntPtr.Zero) {
+                                ulong nativeId = SteamAPI_ISteamUser_GetSteamID(pUser);
+                                if (nativeId != 0) {
+                                    _configuredSteamId = nativeId;
+                                    return _configuredSteamId;
+                                }
+                            }
+                        } catch {}
+                        _configuredSteamId = 76561198000000000UL;
+                    }
+                }
+                return _configuredSteamId;
+            }
+            set {
+                _configuredSteamId = value;
+                UnityEngine.PlayerPrefs.SetString("SteamID64", value.ToString());
+                UnityEngine.PlayerPrefs.Save();
+                SteamShimLogger.Info($"[SteamUser] Updated ConfiguredSteamID to: {value}");
+            }
+        }
+
         public static HSteamUser GetHSteamUser() {
             return default;
         }
         public static bool BLoggedOn() {
+            try {
+                IntPtr pUser = SteamAPI_SteamUser_v023();
+                if (pUser != IntPtr.Zero) return SteamAPI_ISteamUser_BLoggedOn(pUser);
+            } catch {}
             return false;
         }
         public static CSteamID GetSteamID() {
-            return new CSteamID(76561198000000000UL);
+            return new CSteamID(ConfiguredSteamID);
         }
         public static int InitiateGameConnection_DEPRECATED(byte[] pAuthBlob, int cbMaxAuthBlob, CSteamID steamIDGameServer, uint unIPServer, ushort usPortServer, bool bSecure) {
             return 0;
@@ -3602,6 +3693,19 @@ namespace Steamworks {
             return 0;
         }
         public static HAuthTicket GetAuthSessionTicket(byte[] pTicket, int cbMaxTicket, out uint pcbTicket, ref SteamNetworkingIdentity pSteamNetworkingIdentity) {
+            try {
+                IntPtr pUser = SteamAPI_SteamUser_v023();
+                if (pUser != IntPtr.Zero) {
+                    uint hTicket = SteamAPI_ISteamUser_GetAuthSessionTicket(pUser, pTicket, cbMaxTicket, out pcbTicket, ref pSteamNetworkingIdentity);
+                    if (hTicket != 0 && pcbTicket > 0) {
+                        SteamShimLogger.Info($"[SteamUser] Successfully obtained native AuthSessionTicket ({pcbTicket} bytes, handle={hTicket})");
+                        return new HAuthTicket(hTicket);
+                    }
+                }
+            } catch (Exception ex) {
+                SteamShimLogger.Warn($"[SteamUser] Native GetAuthSessionTicket note: {ex.Message}");
+            }
+
             if (pTicket != null && cbMaxTicket >= 128) {
                 using (var ms = new System.IO.MemoryStream(pTicket)) {
                     using (var writer = new System.IO.BinaryWriter(ms)) {
@@ -4026,8 +4130,15 @@ namespace Steamworks {
                 SteamAPI_RunCallbacks();
             } catch {}
         }
+        [DllImport(SteamApiLib, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool SteamAPI_IsSteamRunning();
+
         public static bool IsSteamRunning() {
-            return false;
+            try {
+                return SteamAPI_IsSteamRunning();
+            } catch {
+                return false;
+            }
         }
         public static HSteamPipe GetHSteamPipe() {
             return default;

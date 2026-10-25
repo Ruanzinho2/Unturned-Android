@@ -38,6 +38,8 @@ namespace SDG.Unturned
 		private static ISleekBox addressInfoBox;
 		private static ISleekBox serverCodeInfoBox;
 		private static ISleekImage serverCodeIcon;
+		private static ISleekField steamIdField;
+		private static ISleekField personaNameField;
 
 
 		/// <param name="shouldAutoJoin">If true the server is immediately joined, otherwise show server details beforehand.</param>
@@ -56,6 +58,15 @@ namespace SDG.Unturned
 			}
 
 			active = true;
+
+			if (steamIdField != null)
+			{
+				steamIdField.Text = SteamUser.ConfiguredSteamID != 0 ? SteamUser.ConfiguredSteamID.ToString() : "76561198000000000";
+			}
+			if (personaNameField != null)
+			{
+				personaNameField.Text = SteamFriends.ConfiguredPersonaName;
+			}
 
 			container.AnimateIntoView();
 		}
@@ -210,6 +221,16 @@ namespace SDG.Unturned
 
 		private static void onClickedConnectButton(ISleekElement button)
 		{
+			if (steamIdField != null && ulong.TryParse(steamIdField.Text.Trim(), out ulong customId) && customId > 0)
+			{
+				SteamUser.ConfiguredSteamID = customId;
+			}
+			if (personaNameField != null && !string.IsNullOrEmpty(personaNameField.Text.Trim()))
+			{
+				SteamFriends.ConfiguredPersonaName = personaNameField.Text.Trim();
+			}
+			Provider.UpdateClientSteamCredentials();
+
 			SplitHostIntoAddressAndPort();
 
 			IPv4Address finalAddress;
@@ -557,6 +578,34 @@ namespace SDG.Unturned
 			connectButton.onClickedButton += onClickedConnectButton;
 			container.AddChild(connectButton);
 
+			steamIdField = Glazier.Get().CreateStringField();
+			steamIdField.PositionOffset_X = -300;
+			steamIdField.PositionOffset_Y = 85;
+			steamIdField.PositionScale_X = 0.5f;
+			steamIdField.PositionScale_Y = 0.5f;
+			steamIdField.SizeOffset_X = 600;
+			steamIdField.SizeOffset_Y = 30;
+			steamIdField.MaxLength = 32;
+			steamIdField.AddLabel("Steam ID (64-bit)", ESleekSide.RIGHT);
+			steamIdField.TooltipText = "Custom 64-bit Steam ID for multiplayer";
+			steamIdField.Text = SteamUser.ConfiguredSteamID != 0 ? SteamUser.ConfiguredSteamID.ToString() : "76561198000000000";
+			steamIdField.OnTextChanged += onTypedSteamIdField;
+			container.AddChild(steamIdField);
+
+			personaNameField = Glazier.Get().CreateStringField();
+			personaNameField.PositionOffset_X = -300;
+			personaNameField.PositionOffset_Y = 125;
+			personaNameField.PositionScale_X = 0.5f;
+			personaNameField.PositionScale_Y = 0.5f;
+			personaNameField.SizeOffset_X = 600;
+			personaNameField.SizeOffset_Y = 30;
+			personaNameField.MaxLength = 32;
+			personaNameField.AddLabel("Steam Name", ESleekSide.RIGHT);
+			personaNameField.TooltipText = "Steam persona / player name";
+			personaNameField.Text = SteamFriends.ConfiguredPersonaName;
+			personaNameField.OnTextChanged += onTypedPersonaNameField;
+			container.AddChild(personaNameField);
+
 			RefreshAddressInfo();
 			RefreshServerCodeInfo();
 
@@ -574,6 +623,24 @@ namespace SDG.Unturned
 			backButton.fontSize = ESleekFontSize.Medium;
 			backButton.iconColor = ESleekTint.FOREGROUND;
 			container.AddChild(backButton);
+		}
+
+		private static void onTypedSteamIdField(ISleekField field, string text)
+		{
+			if (ulong.TryParse(text.Trim(), out ulong id) && id > 0)
+			{
+				SteamUser.ConfiguredSteamID = id;
+				Provider.UpdateClientSteamCredentials();
+			}
+		}
+
+		private static void onTypedPersonaNameField(ISleekField field, string text)
+		{
+			if (!string.IsNullOrEmpty(text))
+			{
+				SteamFriends.ConfiguredPersonaName = text.Trim();
+				Provider.UpdateClientSteamCredentials();
+			}
 		}
 	}
 }
