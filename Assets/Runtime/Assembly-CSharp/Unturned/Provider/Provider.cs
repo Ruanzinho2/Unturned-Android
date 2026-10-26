@@ -760,10 +760,8 @@ namespace SDG.Unturned
 				{
 					if (!string.Equals(CurrentServerAdvertisement.map, response.levelName, StringComparison.OrdinalIgnoreCase))
 					{
-						// Server advertised map is not the same as requested map.
-						_connectionFailureInfo = ESteamConnectionFailureInfo.SERVER_MAP_ADVERTISEMENT_MISMATCH;
-						RequestDisconnect($"server map advertisement mismatch (Advertisement: \"{CurrentServerAdvertisement.map}\" Response: \"{response.levelName}\")");
-						return;
+						UnturnedLog.warn($"[Provider] Server map advertisement mismatch (Advertisement: \"{CurrentServerAdvertisement.map}\" Response: \"{response.levelName}\") - updating to actual server map.");
+						CurrentServerAdvertisement.map = response.levelName;
 					}
 				}
 
@@ -790,23 +788,20 @@ namespace SDG.Unturned
 
 				if (CurrentServerAdvertisement.maxPlayers != response.maxPlayers)
 				{
-					_connectionFailureInfo = ESteamConnectionFailureInfo.SERVER_MAXPLAYERS_ADVERTISEMENT_MISMATCH;
-					RequestDisconnect($"server max players advertisement mismatch (Advertisement: {CurrentServerAdvertisement.maxPlayers} Response: {response.maxPlayers})");
-					return;
+					UnturnedLog.warn($"[Provider] Server max players advertisement mismatch (Advertisement: {CurrentServerAdvertisement.maxPlayers} Response: {response.maxPlayers}) - ignoring mismatch on client.");
+					CurrentServerAdvertisement.maxPlayers = response.maxPlayers;
 				}
 
 				if (CurrentServerAdvertisement.cameraMode != response.cameraMode)
 				{
-					_connectionFailureInfo = ESteamConnectionFailureInfo.SERVER_CAMERAMODE_ADVERTISEMENT_MISMATCH;
-					RequestDisconnect($"server camera mode advertisement mismatch (Advertisement: {CurrentServerAdvertisement.cameraMode} Response: {response.cameraMode})");
-					return;
+					UnturnedLog.warn($"[Provider] Server camera mode advertisement mismatch (Advertisement: {CurrentServerAdvertisement.cameraMode} Response: {response.cameraMode}) - ignoring mismatch on client.");
+					CurrentServerAdvertisement.cameraMode = response.cameraMode;
 				}
 
 				if (CurrentServerAdvertisement.isPvP != response.isPvP)
 				{
-					_connectionFailureInfo = ESteamConnectionFailureInfo.SERVER_PVP_ADVERTISEMENT_MISMATCH;
-					RequestDisconnect($"server PvP advertisement mismatch (Advertisement: {CurrentServerAdvertisement.isPvP} Response: {response.isPvP})");
-					return;
+					UnturnedLog.warn($"[Provider] Server PvP advertisement mismatch (Advertisement: {CurrentServerAdvertisement.isPvP} Response: {response.isPvP}) - ignoring mismatch on client.");
+					CurrentServerAdvertisement.isPvP = response.isPvP;
 				}
 			}
 
@@ -817,23 +812,10 @@ namespace SDG.Unturned
 			}
 			else
 			{
-				bool serverAdvertisedWorkshopItems = CurrentServerAdvertisement?.isWorkshop ?? true;
-				if (serverAdvertisedWorkshopItems && doServerItemsMatchAdvertisement(queryIDs))
-				{
-					// We don't currently support interrupting the workshop files download / assets load.
-					// Handling is paused until launch() is called.
-					canCurrentlyHandleClientTransportFailure = false;
-
-					UnturnedLog.info("Server specified {0} workshop item(s), querying details", queryIDs.Count);
-					provider.workshopService.queryServerWorkshopItems(queryIDs, response.ip);
-				}
-				else
-				{
-					// Server advertised it was not using workshop items, but requested we download some.
-					// Some hosts use plugins to hide their workshop usage.
-					_connectionFailureInfo = ESteamConnectionFailureInfo.WORKSHOP_ADVERTISEMENT_MISMATCH;
-					RequestDisconnect("workshop advertisement mismatch");
-				}
+				// Always query server workshop items, even if not advertised or mismatched on master list
+				canCurrentlyHandleClientTransportFailure = false;
+				UnturnedLog.info("Server specified {0} workshop item(s), querying details", queryIDs.Count);
+				provider.workshopService.queryServerWorkshopItems(queryIDs, response.ip);
 			}
 		}
 
