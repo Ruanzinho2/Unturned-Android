@@ -760,8 +760,7 @@ namespace SDG.Unturned
 				{
 					if (!string.Equals(CurrentServerAdvertisement.map, response.levelName, StringComparison.OrdinalIgnoreCase))
 					{
-						UnturnedLog.warn($"[Provider] Server map advertisement mismatch (Advertisement: \"{CurrentServerAdvertisement.map}\" Response: \"{response.levelName}\") - updating to actual server map.");
-						CurrentServerAdvertisement.map = response.levelName;
+						UnturnedLog.warn($"[Provider] Server map advertisement mismatch (Advertisement: \"{CurrentServerAdvertisement.map}\" Response: \"{response.levelName}\") - ignoring mismatch on client.");
 					}
 				}
 
@@ -789,19 +788,16 @@ namespace SDG.Unturned
 				if (CurrentServerAdvertisement.maxPlayers != response.maxPlayers)
 				{
 					UnturnedLog.warn($"[Provider] Server max players advertisement mismatch (Advertisement: {CurrentServerAdvertisement.maxPlayers} Response: {response.maxPlayers}) - ignoring mismatch on client.");
-					CurrentServerAdvertisement.maxPlayers = response.maxPlayers;
 				}
 
 				if (CurrentServerAdvertisement.cameraMode != response.cameraMode)
 				{
 					UnturnedLog.warn($"[Provider] Server camera mode advertisement mismatch (Advertisement: {CurrentServerAdvertisement.cameraMode} Response: {response.cameraMode}) - ignoring mismatch on client.");
-					CurrentServerAdvertisement.cameraMode = response.cameraMode;
 				}
 
 				if (CurrentServerAdvertisement.isPvP != response.isPvP)
 				{
 					UnturnedLog.warn($"[Provider] Server PvP advertisement mismatch (Advertisement: {CurrentServerAdvertisement.isPvP} Response: {response.isPvP}) - ignoring mismatch on client.");
-					CurrentServerAdvertisement.isPvP = response.isPvP;
 				}
 			}
 
