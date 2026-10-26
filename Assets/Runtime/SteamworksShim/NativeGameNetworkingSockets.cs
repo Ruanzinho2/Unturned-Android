@@ -14,7 +14,7 @@ namespace Steamworks {
     /// P/Invoke bindings to Valve's open-source libGameNetworkingSockets.so for Android ARM64.
     /// Provides real SteamNetworkingSockets network transport on Android without full Steam client.
     /// </summary>
-    internal static class NativeGameNetworkingSockets {
+    public static class NativeGameNetworkingSockets {
         private const string LibName = "GameNetworkingSockets";
         private static bool isInitialized = false;
         private static bool isAvailable = false;

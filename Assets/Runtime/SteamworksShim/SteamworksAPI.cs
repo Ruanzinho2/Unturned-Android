@@ -1231,6 +1231,12 @@ namespace Steamworks {
             A2SPingQuery.RunCallbacks();
             NativeGameNetworkingSockets.RunCallbacks();
         }
+        public static void EnsureLocalIdentity(ulong expectedSteamId) {
+            NativeGameNetworkingSockets.EnsureLocalIdentity(expectedSteamId);
+        }
+        public static void Reinitialize(ulong newSteamId) {
+            NativeGameNetworkingSockets.Reinitialize(newSteamId);
+        }
         public static bool BeginAsyncRequestFakeIP(int nNumPorts) {
             return false;
         }
@@ -2925,6 +2931,12 @@ namespace Steamworks {
             A2SPingQuery.RunCallbacks();
             NativeGameNetworkingSockets.RunCallbacks();
         }
+        public static void EnsureLocalIdentity(ulong expectedSteamId) {
+            NativeGameNetworkingSockets.EnsureLocalIdentity(expectedSteamId);
+        }
+        public static void Reinitialize(ulong newSteamId) {
+            NativeGameNetworkingSockets.Reinitialize(newSteamId);
+        }
         public static bool BeginAsyncRequestFakeIP(int nNumPorts) {
             return false;
         }
@@ -4189,6 +4201,12 @@ namespace Steamworks {
         public static void RunCallbacks() {
             A2SPingQuery.RunCallbacks();
             NativeGameNetworkingSockets.RunCallbacks();
+        }
+        public static void EnsureLocalIdentity(ulong expectedSteamId) {
+            NativeGameNetworkingSockets.EnsureLocalIdentity(expectedSteamId);
+        }
+        public static void Reinitialize(ulong newSteamId) {
+            NativeGameNetworkingSockets.Reinitialize(newSteamId);
         }
         public static void ReleaseCurrentThreadMemory() {
             return;

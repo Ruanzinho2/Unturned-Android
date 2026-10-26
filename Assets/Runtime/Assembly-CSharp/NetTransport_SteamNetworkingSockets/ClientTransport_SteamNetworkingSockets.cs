@@ -317,7 +317,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 			connectStartTime = UnityEngine.Time.realtimeSinceStartup;
 
 			ulong mySteamId = Steamworks.SteamUser.GetSteamID().m_SteamID;
-			NativeGameNetworkingSockets.EnsureLocalIdentity(mySteamId);
+			Steamworks.SteamNetworkingSockets.EnsureLocalIdentity(mySteamId);
 			if (Steamworks.SteamNetworkingSockets.GetIdentity(out SteamNetworkingIdentity localIdent))
 			{
 				Log("[CONN-STAGE-2/6] Verified Local GNS Identity: {0} (SteamID: {1})", IdentityToString(localIdent), localIdent.GetSteamID64());
