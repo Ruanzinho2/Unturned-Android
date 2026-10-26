@@ -1234,6 +1234,9 @@ namespace Steamworks {
         public static void EnsureLocalIdentity(ulong expectedSteamId) {
             NativeGameNetworkingSockets.EnsureLocalIdentity(expectedSteamId);
         }
+        public static void EnsureAppID(uint appId = 304930) {
+            NativeGameNetworkingSockets.EnsureAppID(appId);
+        }
         public static void Reinitialize(ulong newSteamId) {
             NativeGameNetworkingSockets.Reinitialize(newSteamId);
         }
@@ -2934,6 +2937,9 @@ namespace Steamworks {
         public static void EnsureLocalIdentity(ulong expectedSteamId) {
             NativeGameNetworkingSockets.EnsureLocalIdentity(expectedSteamId);
         }
+        public static void EnsureAppID(uint appId = 304930) {
+            NativeGameNetworkingSockets.EnsureAppID(appId);
+        }
         public static void Reinitialize(ulong newSteamId) {
             NativeGameNetworkingSockets.Reinitialize(newSteamId);
         }
@@ -4204,6 +4210,9 @@ namespace Steamworks {
         }
         public static void EnsureLocalIdentity(ulong expectedSteamId) {
             NativeGameNetworkingSockets.EnsureLocalIdentity(expectedSteamId);
+        }
+        public static void EnsureAppID(uint appId = 304930) {
+            NativeGameNetworkingSockets.EnsureAppID(appId);
         }
         public static void Reinitialize(ulong newSteamId) {
             NativeGameNetworkingSockets.Reinitialize(newSteamId);

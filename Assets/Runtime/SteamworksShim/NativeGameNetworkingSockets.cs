@@ -65,6 +65,9 @@ namespace Steamworks {
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern IntPtr SteamAPI_SteamNetworkingUtils_v003();
 
+        [DllImport("libc", CallingConvention = CallingConvention.Cdecl, SetLastError = true)]
+        private static extern int setenv(string name, string value, int overwrite);
+
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetConnectionStatusChanged(IntPtr self, IntPtr fnCallback);
 
@@ -168,6 +171,11 @@ namespace Steamworks {
             if (isInitialized) return isAvailable;
             isInitialized = true;
             try {
+                try {
+                    setenv("SteamAppId", "304930", 1);
+                    setenv("SteamGameId", "304930", 1);
+                } catch { }
+
                 StringBuilder err = new StringBuilder(1024);
                 IntPtr pIdentity = Marshal.AllocHGlobal(136);
                 try {
@@ -183,6 +191,17 @@ namespace Steamworks {
                         isAvailable = (interfacePtr != IntPtr.Zero);
 
                         if (interfaceUtilsPtr != IntPtr.Zero) {
+                            try {
+                                // IMPORTANT: libGameNetworkingSockets.so stores CSteamNetworkingUtils.m_nAppID at offset +8!
+                                // Standalone GNS defaults this to 0. When 0, client self-signed certs are generated with app_ids: [ 0 ].
+                                // Dedicated Unturned servers (AppID 304930) reject any ConnectRequest whose cert does not include AppID 304930!
+                                Marshal.WriteInt32(interfaceUtilsPtr, 8, 304930);
+                                int configuredAppId = Marshal.ReadInt32(interfaceUtilsPtr, 8);
+                                SteamShimLogger.Info($"[SteamNetworkingSockets] Configured CSteamNetworkingUtils.m_nAppID = {configuredAppId} at offset +8 (for Unturned AppID 304930).");
+                            } catch (Exception appIdEx) {
+                                SteamShimLogger.Warn($"[SteamNetworkingSockets] Note setting AppID in CSteamNetworkingUtils: {appIdEx.Message}");
+                            }
+
                             try {
                                 debugOutputCallbackDelegate = OnNativeDebugOutput;
                                 IntPtr fnDbg = Marshal.GetFunctionPointerForDelegate(debugOutputCallbackDelegate);
@@ -297,6 +316,19 @@ namespace Steamworks {
                 }
             } catch (Exception ex) {
                 SteamShimLogger.Warn($"[SteamNetworkingSockets] EnsureLocalIdentity note: {ex.Message}");
+            }
+        }
+
+        public static void EnsureAppID(uint appId = 304930) {
+            EnsureInitialized();
+            if (interfaceUtilsPtr != IntPtr.Zero) {
+                try {
+                    Marshal.WriteInt32(interfaceUtilsPtr, 8, (int)appId);
+                    int current = Marshal.ReadInt32(interfaceUtilsPtr, 8);
+                    SteamShimLogger.Info($"[SteamNetworkingSockets] Verified CSteamNetworkingUtils.m_nAppID = {current} (Unturned AppID {appId})");
+                } catch (Exception ex) {
+                    SteamShimLogger.Warn($"[SteamNetworkingSockets] EnsureAppID note: {ex.Message}");
+                }
             }
         }
 
