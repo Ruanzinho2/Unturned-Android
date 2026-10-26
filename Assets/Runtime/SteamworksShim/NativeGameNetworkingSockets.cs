@@ -20,6 +20,7 @@ namespace Steamworks {
         private static bool isAvailable = false;
         private static IntPtr interfacePtr = IntPtr.Zero;
         private static IntPtr interfaceUtilsPtr = IntPtr.Zero;
+        private static bool hasValveSignedCert = false;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void FnSteamNetConnectionStatusChanged(IntPtr pInfo);
@@ -58,6 +59,12 @@ namespace Steamworks {
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern ESteamNetworkingAvailability SteamAPI_ISteamNetworkingSockets_GetAuthenticationStatus(IntPtr self, out SteamNetAuthenticationStatus_t pDetails);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool SteamAPI_ISteamNetworkingSockets_GetCertificateRequest(IntPtr self, ref int pcbBlob, IntPtr pBlob, StringBuilder errMsg);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool SteamAPI_ISteamNetworkingSockets_SetCertificate(IntPtr self, byte[] pCertificate, int cbCertificate, StringBuilder errMsg);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern IntPtr SteamAPI_SteamNetworkingSockets_v009();
@@ -262,6 +269,9 @@ namespace Steamworks {
                         }
 
                         SteamShimLogger.Info($"[SteamNetworkingSockets] Initialized successfully. interfacePtr={interfacePtr} utilsPtr={interfaceUtilsPtr}");
+                        if (SDG.Unturned.SteamBridge.IsLoggedOn) {
+                            EnsureNetworkingCertificate(304930);
+                        }
                     } else {
                         SteamShimLogger.Error($"[SteamNetworkingSockets] GameNetworkingSockets_Init failed: {err}");
                         isAvailable = false;
@@ -289,6 +299,7 @@ namespace Steamworks {
                     }
                     isInitialized = false;
                     isAvailable = false;
+                    hasValveSignedCert = false;
                     interfacePtr = IntPtr.Zero;
                     interfaceUtilsPtr = IntPtr.Zero;
                 }
@@ -329,6 +340,146 @@ namespace Steamworks {
                 } catch (Exception ex) {
                     SteamShimLogger.Warn($"[SteamNetworkingSockets] EnsureAppID note: {ex.Message}");
                 }
+            }
+        }
+
+        public static bool EnsureNetworkingCertificate(uint appId = 304930) {
+            if (hasValveSignedCert) return true;
+            if (!EnsureInitialized() || interfacePtr == IntPtr.Zero) return false;
+
+            if (!SDG.Unturned.SteamBridge.IsLoggedOn) {
+                SteamShimLogger.Info("[SteamNetworkingSockets] JavaSteam is not logged on. Using local self-signed certificate.");
+                return false;
+            }
+
+            try {
+                SteamShimLogger.Info($"[SteamNetworkingSockets] Requesting Steam networking certificate for AppID {appId}...");
+
+                // Step 1: Call GetCertificateRequest on GNS to generate local private key and get request blob
+                int cbBlob = 0;
+                StringBuilder errMsg = new StringBuilder(1024);
+                SteamAPI_ISteamNetworkingSockets_GetCertificateRequest(interfacePtr, ref cbBlob, IntPtr.Zero, errMsg);
+                if (cbBlob <= 0) {
+                    SteamShimLogger.Warn($"[SteamNetworkingSockets] GetCertificateRequest returned non-positive size: {cbBlob}, err: {errMsg}");
+                    return false;
+                }
+
+                IntPtr pBlob = Marshal.AllocHGlobal(cbBlob);
+                byte[] certReqBlob = new byte[cbBlob];
+                try {
+                    bool reqOk = SteamAPI_ISteamNetworkingSockets_GetCertificateRequest(interfacePtr, ref cbBlob, pBlob, errMsg);
+                    if (!reqOk) {
+                        SteamShimLogger.Warn($"[SteamNetworkingSockets] GetCertificateRequest failed: {errMsg}");
+                        return false;
+                    }
+                    Marshal.Copy(pBlob, certReqBlob, 0, cbBlob);
+                } finally {
+                    Marshal.FreeHGlobal(pBlob);
+                }
+
+                // Step 2: Extract 32-byte Ed25519 public key from certReqBlob
+                byte[] publicKey = ExtractPublicKeyFromCertRequest(certReqBlob);
+                if (publicKey == null || publicKey.Length != 32) {
+                    SteamShimLogger.Warn($"[SteamNetworkingSockets] Could not extract 32-byte public key from GetCertificateRequest blob (extracted: {(publicKey != null ? publicKey.Length : 0)} bytes)");
+                    return false;
+                }
+
+                SteamShimLogger.Info($"[SteamNetworkingSockets] Extracted Ed25519 public key (32 bytes). Contacting Steam CM via JavaSteam...");
+
+                // Step 3: Request signed certificate from Valve via JavaSteam
+                byte[] signedCertBlob = SDG.Unturned.SteamBridge.RequestNetworkingCertificate(appId, publicKey);
+                if (signedCertBlob == null || signedCertBlob.Length == 0) {
+                    SteamShimLogger.Warn("[SteamNetworkingSockets] JavaSteam failed to obtain signed certificate from Steam CM.");
+                    return false;
+                }
+
+                SteamShimLogger.Info($"[SteamNetworkingSockets] Obtained signed certificate ({signedCertBlob.Length} bytes). Installing into GNS...");
+
+                // Step 4: Install signed certificate into GNS
+                errMsg.Clear();
+                bool setOk = SteamAPI_ISteamNetworkingSockets_SetCertificate(interfacePtr, signedCertBlob, signedCertBlob.Length, errMsg);
+                if (setOk) {
+                    hasValveSignedCert = true;
+                    SteamShimLogger.Info($"[SteamNetworkingSockets] Valve-signed certificate successfully installed for AppID {appId}! (note/err: '{errMsg}')");
+                    return true;
+                } else {
+                    SteamShimLogger.Warn($"[SteamNetworkingSockets] SteamAPI_ISteamNetworkingSockets_SetCertificate failed: {errMsg}");
+                    return false;
+                }
+            } catch (Exception ex) {
+                SteamShimLogger.Error($"[SteamNetworkingSockets] EnsureNetworkingCertificate exception: {ex}");
+                return false;
+            }
+        }
+
+        private static byte[] ExtractPublicKeyFromCertRequest(byte[] blob) {
+            if (blob == null || blob.Length == 0) return null;
+            try {
+                // Protobuf format:
+                // CMsgSteamDatagramCertificateRequest: field 1 (cert, wire type 2)
+                // Inside cert: field 2 (key_data, wire type 2, length 32)
+                int offset = 0;
+                while (offset < blob.Length) {
+                    int tag = ReadVarint(blob, ref offset);
+                    int fieldNum = tag >> 3;
+                    int wireType = tag & 7;
+                    if (fieldNum == 1 && wireType == 2) {
+                        int certLen = ReadVarint(blob, ref offset);
+                        int certEnd = offset + certLen;
+                        while (offset < certEnd && offset < blob.Length) {
+                            int innerTag = ReadVarint(blob, ref offset);
+                            int innerField = innerTag >> 3;
+                            int innerWire = innerTag & 7;
+                            if (innerField == 2 && innerWire == 2) {
+                                int keyLen = ReadVarint(blob, ref offset);
+                                if (keyLen == 32 && offset + keyLen <= blob.Length) {
+                                    byte[] key = new byte[32];
+                                    Buffer.BlockCopy(blob, offset, key, 0, 32);
+                                    return key;
+                                }
+                            }
+                            SkipProtobufField(blob, ref offset, innerWire);
+                        }
+                    } else {
+                        SkipProtobufField(blob, ref offset, wireType);
+                    }
+                }
+            } catch (Exception ex) {
+                SteamShimLogger.Warn($"[SteamNetworkingSockets] ExtractPublicKeyFromCertRequest exception: {ex.Message}");
+            }
+            return null;
+        }
+
+        private static int ReadVarint(byte[] buf, ref int offset) {
+            int result = 0;
+            int shift = 0;
+            while (offset < buf.Length) {
+                byte b = buf[offset++];
+                result |= (b & 0x7F) << shift;
+                if ((b & 0x80) == 0) break;
+                shift += 7;
+            }
+            return result;
+        }
+
+        private static void SkipProtobufField(byte[] buf, ref int offset, int wireType) {
+            switch (wireType) {
+                case 0: // Varint
+                    while (offset < buf.Length && (buf[offset++] & 0x80) != 0) { }
+                    break;
+                case 1: // 64-bit
+                    offset += 8;
+                    break;
+                case 2: // Length-delimited
+                    int len = ReadVarint(buf, ref offset);
+                    offset += len;
+                    break;
+                case 5: // 32-bit
+                    offset += 4;
+                    break;
+                default:
+                    offset = buf.Length;
+                    break;
             }
         }
 
@@ -381,6 +532,7 @@ namespace Steamworks {
                         address.Clear();
                     }
                     address.ToString(out string ipStr, true);
+                    EnsureNetworkingCertificate(304930);
                     SteamShimLogger.Info($"[SteamNetworkingSockets] ConnectByIPAddress initiating connection to {ipStr}...");
 
                     var optList = pOptions != null ? new System.Collections.Generic.List<SteamNetworkingConfigValue_t>(pOptions) : new System.Collections.Generic.List<SteamNetworkingConfigValue_t>();

@@ -319,6 +319,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 			ulong mySteamId = Steamworks.SteamUser.GetSteamID().m_SteamID;
 			Steamworks.SteamNetworkingSockets.EnsureLocalIdentity(mySteamId);
 			Steamworks.SteamNetworkingSockets.EnsureAppID(304930);
+			Steamworks.SteamNetworkingSockets.EnsureNetworkingCertificate(304930);
 			if (Steamworks.SteamNetworkingSockets.GetIdentity(out SteamNetworkingIdentity localIdent))
 			{
 				Log("[CONN-STAGE-2/6] Verified Local GNS Identity: {0} (SteamID: {1})", IdentityToString(localIdent), localIdent.GetSteamID64());

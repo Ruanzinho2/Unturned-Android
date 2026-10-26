@@ -136,6 +136,17 @@ namespace SDG.Unturned
                     Provider.UpdateClientSteamCredentials();
 
                     UnturnedLog.info($"[SteamBridge] Successfully logged on via JavaSteam! SteamID: {uSteamId}, Account: {accountName}");
+                    System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+                    {
+                        try
+                        {
+                            Steamworks.SteamNetworkingSockets.EnsureNetworkingCertificate(304930);
+                        }
+                        catch (Exception certEx)
+                        {
+                            UnturnedLog.warn($"[SteamBridge] Background EnsureNetworkingCertificate note: {certEx.Message}");
+                        }
+                    });
                     callbackLoginSuccess?.Invoke(uSteamId, accountName);
                 });
             }
@@ -260,6 +271,25 @@ namespace SDG.Unturned
             catch (Exception ex)
             {
                 UnturnedLog.warn($"[SteamBridge] GetAuthSessionTicket exception: {ex.Message}");
+            }
+#endif
+            return null;
+        }
+
+        public static byte[] RequestNetworkingCertificate(uint appId, byte[] publicKey)
+        {
+            EnsureInitialized();
+#if UNITY_ANDROID && !UNITY_EDITOR
+            try
+            {
+                using (AndroidJavaClass bridgeClass = new AndroidJavaClass("com.smartlydressedgames.unturned.SteamBridge"))
+                {
+                    return bridgeClass.CallStatic<byte[]>("requestNetworkingCertificate", (int)appId, publicKey);
+                }
+            }
+            catch (Exception ex)
+            {
+                UnturnedLog.warn($"[SteamBridge] RequestNetworkingCertificate exception: {ex.Message}");
             }
 #endif
             return null;

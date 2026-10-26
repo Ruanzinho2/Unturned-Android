@@ -17,6 +17,8 @@ import in.dragonbra.javasteam.steam.authentication.QrAuthSession;
 import in.dragonbra.javasteam.steam.authentication.SteamAuthentication;
 import in.dragonbra.javasteam.steam.handlers.steamauthticket.SteamAuthTicket;
 import in.dragonbra.javasteam.steam.handlers.steamauthticket.TicketInfo;
+import in.dragonbra.javasteam.steam.handlers.steamnetworking.SteamNetworking;
+import in.dragonbra.javasteam.steam.handlers.steamnetworking.callback.NetworkingCertificateCallback;
 import in.dragonbra.javasteam.steam.handlers.steamuser.LogOnDetails;
 import in.dragonbra.javasteam.steam.handlers.steamuser.SteamUser;
 import in.dragonbra.javasteam.steam.handlers.steamuser.callback.LoggedOffCallback;
@@ -295,6 +297,81 @@ public class SteamBridge {
             Log.e(TAG, "Error generating AuthSessionTicket: " + ex.getMessage(), ex);
         }
         return null;
+    }
+
+    public static byte[] requestNetworkingCertificate(int appId, byte[] publicKey) {
+        if (!sIsLoggedOn || sClient == null) {
+            Log.w(TAG, "Cannot requestNetworkingCertificate: SteamClient not logged on!");
+            return null;
+        }
+
+        try {
+            SteamNetworking handler = sClient.getHandler(SteamNetworking.class);
+            if (handler == null) {
+                Log.e(TAG, "SteamNetworking handler is not available on SteamClient!");
+                return null;
+            }
+
+            Log.i(TAG, "Requesting networking certificate from Steam CM for AppID " + appId + " (pubKey: " + (publicKey != null ? publicKey.length : 0) + " bytes)...");
+            NetworkingCertificateCallback cb = handler.requestNetworkingCertificate(appId, publicKey).toFuture().get(15, TimeUnit.SECONDS);
+            if (cb == null) {
+                Log.e(TAG, "NetworkingCertificateCallback is null!");
+                return null;
+            }
+
+            byte[] cert = cb.getCertificate();
+            long caKeyId = cb.getCaKeyId();
+            byte[] caSig = cb.getCaSignature();
+
+            Log.i(TAG, "Received certificate from Steam CM! certLen=" + (cert != null ? cert.length : 0)
+                    + ", caKeyId=0x" + Long.toHexString(caKeyId) + ", sigLen=" + (caSig != null ? caSig.length : 0));
+
+            if (cert == null || caSig == null) {
+                Log.e(TAG, "Certificate or CA signature missing from callback!");
+                return null;
+            }
+
+            // Serialize into CMsgSteamDatagramCertificateSigned protobuf format:
+            // Field 4 (bytes): cert (tag = (4 << 3) | 2 = 0x22)
+            // Field 5 (fixed64): ca_key_id (tag = (5 << 3) | 1 = 0x29)
+            // Field 6 (bytes): ca_signature (tag = (6 << 3) | 2 = 0x32)
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+            // Field 4: cert
+            writeVarint(baos, (4 << 3) | 2);
+            writeVarint(baos, cert.length);
+            baos.write(cert);
+
+            // Field 5: ca_key_id (fixed64 = 8 bytes little-endian)
+            writeVarint(baos, (5 << 3) | 1);
+            for (int i = 0; i < 8; i++) {
+                baos.write((int) ((caKeyId >> (8 * i)) & 0xFF));
+            }
+
+            // Field 6: ca_signature
+            writeVarint(baos, (6 << 3) | 2);
+            writeVarint(baos, caSig.length);
+            baos.write(caSig);
+
+            byte[] result = baos.toByteArray();
+            Log.i(TAG, "Serialized CMsgSteamDatagramCertificateSigned (" + result.length + " bytes).");
+            return result;
+        } catch (Exception ex) {
+            Log.e(TAG, "Error requesting networking certificate: " + ex.getMessage(), ex);
+        }
+        return null;
+    }
+
+    private static void writeVarint(ByteArrayOutputStream out, long value) {
+        while (true) {
+            if ((value & ~0x7FL) == 0) {
+                out.write((int) value);
+                return;
+            } else {
+                out.write((int) ((value & 0x7F) | 0x80));
+                value >>>= 7;
+            }
+        }
     }
 
     public static boolean isLoggedOn() {
