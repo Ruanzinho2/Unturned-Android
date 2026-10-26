@@ -349,6 +349,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 				if (connection == HSteamNetConnection.Invalid)
 				{
 					Log("[CONN-STAGE-2/6] [ERROR] Client failed to establish connection handle (HSteamNetConnection.Invalid)!");
+					InvokeFailureCallback("failed to create client connection handle");
 				}
 				else
 				{

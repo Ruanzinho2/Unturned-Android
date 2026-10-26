@@ -351,6 +351,9 @@ namespace Steamworks {
                     SteamShimLogger.Info($"[SteamNetworkingSockets] ConnectByIPAddress initiating connection to {ipStr}...");
 
                     var optList = pOptions != null ? new System.Collections.Generic.List<SteamNetworkingConfigValue_t>(pOptions) : new System.Collections.Generic.List<SteamNetworkingConfigValue_t>();
+                    // Remove any global-only options (such as PacketTraceMaxBytes) that fail per-connection validation
+                    optList.RemoveAll(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_PacketTraceMaxBytes);
+
                     if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth)) {
                         optList.Add(new SteamNetworkingConfigValue_t {
                             m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth,
@@ -358,53 +361,10 @@ namespace Steamworks {
                             m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 1 }
                         });
                     }
-                    if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_PacketTraceMaxBytes)) {
-                        optList.Add(new SteamNetworkingConfigValue_t {
-                            m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_PacketTraceMaxBytes,
-                            m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
-                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 512 }
-                        });
-                    }
-                    if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_PacketDecode)) {
-                        optList.Add(new SteamNetworkingConfigValue_t {
-                            m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_PacketDecode,
-                            m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
-                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 8 }
-                        });
-                    }
-                    if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_Message)) {
-                        optList.Add(new SteamNetworkingConfigValue_t {
-                            m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_Message,
-                            m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
-                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 8 }
-                        });
-                    }
-                    if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_AckRTT)) {
-                        optList.Add(new SteamNetworkingConfigValue_t {
-                            m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_AckRTT,
-                            m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
-                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 8 }
-                        });
-                    }
-                    if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_PacketGaps)) {
-                        optList.Add(new SteamNetworkingConfigValue_t {
-                            m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_PacketGaps,
-                            m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
-                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 8 }
-                        });
-                    }
                     var actualOpts = optList.ToArray();
 
                     HSteamNetConnection conn = SteamAPI_ISteamNetworkingSockets_ConnectByIPAddress(interfacePtr, ref address, actualOpts.Length, actualOpts);
                     SteamShimLogger.Info($"[SteamNetworkingSockets] ConnectByIPAddress returned connection handle: {conn.m_HSteamNetConnection}");
-                    if (conn != HSteamNetConnection.Invalid && interfaceUtilsPtr != IntPtr.Zero) {
-                        try {
-                            bool cCfg = SteamAPI_ISteamNetworkingUtils_SetConnectionConfigValueInt32(interfaceUtilsPtr, conn.m_HSteamNetConnection, 23 /* k_ESteamNetworkingConfig_IP_AllowWithoutAuth */, 1);
-                            SteamShimLogger.Info($"[SteamNetworkingSockets] SetConnectionConfigValueInt32 on conn {conn.m_HSteamNetConnection} result: {cCfg}");
-                        } catch (Exception cEx) {
-                            SteamShimLogger.Warn($"[SteamNetworkingSockets] Connection config note: {cEx.Message}");
-                        }
-                    }
                     return conn;
                 } catch (Exception ex) {
                     SteamShimLogger.Error($"[SteamNetworkingSockets] ConnectByIPAddress exception: {ex}");

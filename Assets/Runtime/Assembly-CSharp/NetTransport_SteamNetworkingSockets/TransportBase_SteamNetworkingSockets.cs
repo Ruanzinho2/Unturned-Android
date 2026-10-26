@@ -144,36 +144,6 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 			allowWithoutAuth.m_val.m_int32 = 1; // 1 = Attempt auth, fallback to unauthenticated if not possible
 			configList.Add(allowWithoutAuth);
 
-			SteamNetworkingConfigValue_t packetTrace = new SteamNetworkingConfigValue_t();
-			packetTrace.m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32;
-			packetTrace.m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_PacketTraceMaxBytes;
-			packetTrace.m_val.m_int32 = 512;
-			configList.Add(packetTrace);
-
-			SteamNetworkingConfigValue_t packetDecode = new SteamNetworkingConfigValue_t();
-			packetDecode.m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32;
-			packetDecode.m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_PacketDecode;
-			packetDecode.m_val.m_int32 = 8;
-			configList.Add(packetDecode);
-
-			SteamNetworkingConfigValue_t msgLogLevel = new SteamNetworkingConfigValue_t();
-			msgLogLevel.m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32;
-			msgLogLevel.m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_Message;
-			msgLogLevel.m_val.m_int32 = 8;
-			configList.Add(msgLogLevel);
-
-			SteamNetworkingConfigValue_t ackRttLogLevel = new SteamNetworkingConfigValue_t();
-			ackRttLogLevel.m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32;
-			ackRttLogLevel.m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_AckRTT;
-			ackRttLogLevel.m_val.m_int32 = 8;
-			configList.Add(ackRttLogLevel);
-
-			SteamNetworkingConfigValue_t packetGapsLogLevel = new SteamNetworkingConfigValue_t();
-			packetGapsLogLevel.m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32;
-			packetGapsLogLevel.m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_PacketGaps;
-			packetGapsLogLevel.m_val.m_int32 = 8;
-			configList.Add(packetGapsLogLevel);
-
 			if (clSendBufferSize.hasValue && clSendBufferSize.value > 0)
 			{
 				SteamNetworkingConfigValue_t sendBufferSize = new SteamNetworkingConfigValue_t();
