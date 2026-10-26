@@ -21,6 +21,7 @@ namespace SDG.Unturned
             SteamUser.CustomSteamIdProvider = () => SteamId;
             SteamFriends.CustomPersonaNameProvider = () => AccountName;
             SteamUser.CustomAuthTicketProvider = (appId) => GetAuthSessionTicket(appId);
+            NativeGameNetworkingSockets.CustomCertificateProvider = (appId, pubKey) => RequestNetworkingCertificate(appId, pubKey);
 
             // Restore saved credentials if available
             if (PlayerPrefs.HasKey("SteamID64"))

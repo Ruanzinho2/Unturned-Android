@@ -1240,6 +1240,10 @@ namespace Steamworks {
         public static bool EnsureNetworkingCertificate(uint appId = 304930) {
             return NativeGameNetworkingSockets.EnsureNetworkingCertificate(appId);
         }
+        public static NativeGameNetworkingSockets.CustomNetworkingCertificateProviderDelegate CustomCertificateProvider {
+            get => NativeGameNetworkingSockets.CustomCertificateProvider;
+            set => NativeGameNetworkingSockets.CustomCertificateProvider = value;
+        }
         public static void Reinitialize(ulong newSteamId) {
             NativeGameNetworkingSockets.Reinitialize(newSteamId);
         }
@@ -2946,6 +2950,10 @@ namespace Steamworks {
         public static bool EnsureNetworkingCertificate(uint appId = 304930) {
             return NativeGameNetworkingSockets.EnsureNetworkingCertificate(appId);
         }
+        public static NativeGameNetworkingSockets.CustomNetworkingCertificateProviderDelegate CustomCertificateProvider {
+            get => NativeGameNetworkingSockets.CustomCertificateProvider;
+            set => NativeGameNetworkingSockets.CustomCertificateProvider = value;
+        }
         public static void Reinitialize(ulong newSteamId) {
             NativeGameNetworkingSockets.Reinitialize(newSteamId);
         }
@@ -4222,6 +4230,10 @@ namespace Steamworks {
         }
         public static bool EnsureNetworkingCertificate(uint appId = 304930) {
             return NativeGameNetworkingSockets.EnsureNetworkingCertificate(appId);
+        }
+        public static NativeGameNetworkingSockets.CustomNetworkingCertificateProviderDelegate CustomCertificateProvider {
+            get => NativeGameNetworkingSockets.CustomCertificateProvider;
+            set => NativeGameNetworkingSockets.CustomCertificateProvider = value;
         }
         public static void Reinitialize(ulong newSteamId) {
             NativeGameNetworkingSockets.Reinitialize(newSteamId);

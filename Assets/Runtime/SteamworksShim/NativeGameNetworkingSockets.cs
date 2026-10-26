@@ -22,6 +22,9 @@ namespace Steamworks {
         private static IntPtr interfaceUtilsPtr = IntPtr.Zero;
         private static bool hasValveSignedCert = false;
 
+        public delegate byte[] CustomNetworkingCertificateProviderDelegate(uint appId, byte[] publicKey);
+        public static CustomNetworkingCertificateProviderDelegate CustomCertificateProvider = null;
+
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void FnSteamNetConnectionStatusChanged(IntPtr pInfo);
 
@@ -269,7 +272,7 @@ namespace Steamworks {
                         }
 
                         SteamShimLogger.Info($"[SteamNetworkingSockets] Initialized successfully. interfacePtr={interfacePtr} utilsPtr={interfaceUtilsPtr}");
-                        if (SDG.Unturned.SteamBridge.IsLoggedOn) {
+                        if (SteamUser.BLoggedOn()) {
                             EnsureNetworkingCertificate(304930);
                         }
                     } else {
@@ -347,7 +350,7 @@ namespace Steamworks {
             if (hasValveSignedCert) return true;
             if (!EnsureInitialized() || interfacePtr == IntPtr.Zero) return false;
 
-            if (!SDG.Unturned.SteamBridge.IsLoggedOn) {
+            if (!SteamUser.BLoggedOn()) {
                 SteamShimLogger.Info("[SteamNetworkingSockets] JavaSteam is not logged on. Using local self-signed certificate.");
                 return false;
             }
@@ -387,7 +390,7 @@ namespace Steamworks {
                 SteamShimLogger.Info($"[SteamNetworkingSockets] Extracted Ed25519 public key (32 bytes). Contacting Steam CM via JavaSteam...");
 
                 // Step 3: Request signed certificate from Valve via JavaSteam
-                byte[] signedCertBlob = SDG.Unturned.SteamBridge.RequestNetworkingCertificate(appId, publicKey);
+                byte[] signedCertBlob = CustomCertificateProvider != null ? CustomCertificateProvider(appId, publicKey) : null;
                 if (signedCertBlob == null || signedCertBlob.Length == 0) {
                     SteamShimLogger.Warn("[SteamNetworkingSockets] JavaSteam failed to obtain signed certificate from Steam CM.");
                     return false;
