@@ -13,6 +13,7 @@ namespace SDG.Unturned
 		internal static void ReadMessage(NetPakReader reader)
 		{
 			Provider.isWaitingForConnectResponse = false;
+			UnturnedLog.info("[CONN-STAGE-6/6] Received EClientMessage.Verify challenge from server! Initiating Steam auth ticket request...");
 
 			SteamNetworkingIdentity serverIdentity = new SteamNetworkingIdentity();
 			serverIdentity.SetSteamID(Provider.server);
@@ -20,12 +21,13 @@ namespace SDG.Unturned
 			byte[] ticket = Provider.openTicket(serverIdentity);
 			if (ticket == null)
 			{
+				UnturnedLog.error("[CONN-STAGE-6/6] [AUTH FAILED] Provider.openTicket returned null! Cannot authenticate with server.");
 				Provider._connectionFailureInfo = ESteamConnectionFailureInfo.AUTH_EMPTY;
 				Provider.RequestDisconnect("opening Steam auth ticket failed");
 				return;
 			}
 
-			UnturnedLog.info("Authenticating with server");
+			UnturnedLog.info($"[CONN-STAGE-6/6] Authenticating with server: Sending EServerMessage.Authenticate with {ticket.Length} byte auth ticket...");
 
 #if !DEDICATED_SERVER
 			Provider.isWaitingForAuthenticationResponse = true;

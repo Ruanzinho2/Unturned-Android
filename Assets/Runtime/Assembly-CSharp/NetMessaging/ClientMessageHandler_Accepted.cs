@@ -22,7 +22,10 @@ namespace SDG.Unturned
 			reader.ReadUInt16(out connectPort);
 			bool isConnectIpFake = SteamNetworkingUtils.IsFakeIPv4(connectIP);
 
-			UnturnedLog.info("Accepted by server");
+			UnturnedLog.info("================================================================================");
+			UnturnedLog.info("[CONN-STAGE-6/6] [AUTH SUCCESS] Server ACCEPTED player authentication and connection!");
+			UnturnedLog.info($"[CONN-STAGE-6/6] Server Assigned Connection IP: {Parser.getIPFromUInt32(connectIP)}:{connectPort} (FakeIP: {isConnectIpFake})");
+			UnturnedLog.info("================================================================================");
 
 #if WITH_THIRDPARTYAC
 			if (Provider.IsThirdpartyAntiCheatActiveOnCurrentServer)

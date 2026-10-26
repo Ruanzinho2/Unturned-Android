@@ -1730,6 +1730,29 @@ namespace SDG.Unturned
 				return;
 			}
 
+			connectionStartTime = Time.realtimeSinceStartup;
+			string srvIpStr = parameters.address.IsZero ? "N/A" : parameters.address.ToString();
+			string srvCodeStr = parameters.steamId.IsValid() ? parameters.steamId.ToString() : "N/A";
+			UnturnedLog.info("================================================================================");
+			UnturnedLog.info("[CONN-STAGE-1/6] STARTING SERVER CONNECTION");
+			UnturnedLog.info($"[CONN-STAGE-1/6] Target Server: IP={srvIpStr}, GamePort={parameters.connectionPort}, QueryPort={parameters.queryPort}, SteamID={srvCodeStr}");
+			UnturnedLog.info($"[CONN-STAGE-1/6] Password: {(string.IsNullOrEmpty(parameters.password) ? "<empty>" : "<set (" + parameters.password.Length + " chars)>")}");
+			if (advertisement != null)
+			{
+				UnturnedLog.info($"[CONN-STAGE-1/6] Advertisement: Name='{advertisement.name}', Map='{advertisement.map}', Players={advertisement.players}/{advertisement.maxPlayers}, Ping={advertisement.PingMs}ms");
+				UnturnedLog.info($"[CONN-STAGE-1/6] Security Info: VACSecure={advertisement.IsVACSecure}, BattlEye={advertisement.IsBattlEyeAntiCheat}, Transport='{advertisement.networkTransport}'");
+			}
+			else
+			{
+				UnturnedLog.info("[CONN-STAGE-1/6] Advertisement: <null> (Direct Connect / Manual Parameters)");
+			}
+#if UNITY_ANDROID && !UNITY_EDITOR
+			UnturnedLog.info($"[CONN-STAGE-1/6] Local Steam Identity: SteamBridge.IsLoggedOn={SteamBridge.IsLoggedOn}, SteamID={SteamUser.GetSteamID()}, PersonaName='{SteamFriends.GetPersonaName()}'");
+#else
+			UnturnedLog.info($"[CONN-STAGE-1/6] Local Steam Identity: SteamUser.BLoggedOn={SteamUser.BLoggedOn()}, SteamID={SteamUser.GetSteamID()}, PersonaName='{SteamFriends.GetPersonaName()}'");
+#endif
+			UnturnedLog.info("================================================================================");
+
 			_currentServerConnectParameters = parameters;
 			_currentServerAdvertisement = advertisement;
 			isWhitelisted = false;
@@ -1832,7 +1855,7 @@ namespace SDG.Unturned
 			ResetClientTransportFailure();
 
 			clientTransport = NetTransportFactory.CreateClientTransport(_currentServerAdvertisement?.networkTransport);
-			UnturnedLog.info("Initializing {0}", clientTransport.GetType().Name);
+			UnturnedLog.info("[CONN-STAGE-2/6] Initializing net transport: {0}", clientTransport.GetType().Name);
 			clientTransport.Initialize(onClientTransportReady, onClientTransportFailure);
 		}
 
@@ -1841,6 +1864,7 @@ namespace SDG.Unturned
 		/// </summary>
 		private static void onClientTransportReady()
 		{
+			UnturnedLog.info($"[CONN-STAGE-5/6] Client transport ready after {Time.realtimeSinceStartup - connectionStartTime:F2}s! Requesting workshop files from server...");
 			CachedWorkshopResponse response = null;
 			foreach (CachedWorkshopResponse cache in cachedWorkshopResponses)
 			{
@@ -2035,7 +2059,7 @@ namespace SDG.Unturned
 			// Handling is paused until loading finishes.
 			canCurrentlyHandleClientTransportFailure = false;
 
-			UnturnedLog.info("Loading server level ({0})", map);
+			UnturnedLog.info("[CONN-STAGE-5/6] Loading server level ({0}) (Elapsed: {1:F2}s)", map, Time.realtimeSinceStartup - connectionStartTime);
 			Level.load(pendingLevel, false);
 			loadGameMode();
 		}
@@ -2611,7 +2635,14 @@ namespace SDG.Unturned
 
 		public static void RequestDisconnect(string reason)
 		{
-			UnturnedLog.info("Disconnecting: " + reason);
+			float elapsed = Time.realtimeSinceStartup - connectionStartTime;
+			UnturnedLog.info($"[DISCONNECT] RequestDisconnect invoked: \"{reason}\" (Connection elapsed: {elapsed:F2}s)");
+			try
+			{
+				string stack = UnityEngine.StackTraceUtility.ExtractStackTrace();
+				UnturnedLog.info($"[DISCONNECT] Callstack:\n{stack}");
+			}
+			catch { }
 			disconnect();
 		}
 
@@ -3881,7 +3912,7 @@ namespace SDG.Unturned
 						{
 							_connectionFailureInfo = ESteamConnectionFailureInfo.TIMED_OUT;
 
-							RequestDisconnect($"Server did not reply to workshop details request ({timeSinceWorkshopRequest}s elapsed)");
+							RequestDisconnect($"Server did not reply to workshop details request ({timeSinceWorkshopRequest}s elapsed - transport: {clientTransport?.GetType().Name})");
 						}
 						return;
 					}
@@ -5893,6 +5924,7 @@ namespace SDG.Unturned
 		}
 
 		internal static float timeLastPingRequestWasSentToServer;
+		public static float connectionStartTime;
 
 		public static readonly float EPSILON = 0.01f;
 		//public static readonly float MARGIN = 0.3f;
@@ -5946,8 +5978,12 @@ namespace SDG.Unturned
 
 		internal static byte[] openTicket(SteamNetworkingIdentity serverIdentity)
 		{
+			serverIdentity.ToString(out string identityString);
+			UnturnedLog.info($"[CONN-STAGE-6/6] openTicket called for ServerIdentity='{identityString}'");
+
 			if (ticketHandle != HAuthTicket.Invalid)
 			{
+				UnturnedLog.warn("[CONN-STAGE-6/6] [AUTH TICKET] ticketHandle already active, returning null");
 				return null;
 			}
 
@@ -5957,31 +5993,41 @@ namespace SDG.Unturned
 				byte[] javaTicket = SteamBridge.GetAuthSessionTicket(304930);
 				if (javaTicket != null && javaTicket.Length > 0)
 				{
-					UnturnedLog.info($"[SteamBridge] Acquired genuine Steam Auth Session Ticket ({javaTicket.Length} bytes) from JavaSteam!");
+					string hexPreview = System.BitConverter.ToString(javaTicket, 0, System.Math.Min(24, javaTicket.Length)).Replace("-", " ");
+					UnturnedLog.info($"[CONN-STAGE-6/6] [AUTH TICKET] Acquired genuine Steam Auth Session Ticket ({javaTicket.Length} bytes) from JavaSteam for AppID 304930!");
+					UnturnedLog.info($"[CONN-STAGE-6/6] [AUTH TICKET] JavaSteam Ticket Preview (first {System.Math.Min(24, javaTicket.Length)} bytes): {hexPreview}");
 					ticketHandle = new HAuthTicket(1);
 					return javaTicket;
 				}
+				else
+				{
+					UnturnedLog.warn("[CONN-STAGE-6/6] [AUTH TICKET] SteamBridge.GetAuthSessionTicket returned null/empty. Falling back to SteamUser shim.");
+				}
+			}
+			else
+			{
+				UnturnedLog.warn("[CONN-STAGE-6/6] [AUTH TICKET] SteamBridge is not logged on. Falling back to SteamUser shim.");
 			}
 #endif
 
 			uint size;
 			byte[] temp = new byte[1024];
 
-			string identityString;
-			serverIdentity.ToString(out identityString);
-			UnturnedLog.info($"Calling GetAuthSessionTicket with identity {identityString}");
+			UnturnedLog.info($"[CONN-STAGE-6/6] Calling SteamUser.GetAuthSessionTicket with identity {identityString}");
 			ticketHandle = SteamUser.GetAuthSessionTicket(temp, temp.Length, out size, ref serverIdentity);
 
 			if (size == 0)
 			{
-				UnturnedLog.info("GetAuthSessionTicket returned size zero");
+				UnturnedLog.warn("[CONN-STAGE-6/6] [AUTH TICKET] SteamUser.GetAuthSessionTicket returned size zero!");
 				return null;
 			}
 
-			UnturnedLog.info($"GetAuthSessionTicket ticket handle is valid: {ticketHandle != HAuthTicket.Invalid} (size: {size})");
-
 			byte[] ticket = new byte[size];
 			Buffer.BlockCopy(temp, 0, ticket, 0, (int) size);
+
+			string shimHexPreview = System.BitConverter.ToString(ticket, 0, System.Math.Min(24, ticket.Length)).Replace("-", " ");
+			UnturnedLog.info($"[CONN-STAGE-6/6] [AUTH TICKET] SteamUser ticket created: Handle={ticketHandle.m_HAuthTicket}, Size={size}");
+			UnturnedLog.info($"[CONN-STAGE-6/6] [AUTH TICKET] Shim Ticket Preview (first {System.Math.Min(24, ticket.Length)} bytes): {shimHexPreview}");
 
 			return ticket;
 		}

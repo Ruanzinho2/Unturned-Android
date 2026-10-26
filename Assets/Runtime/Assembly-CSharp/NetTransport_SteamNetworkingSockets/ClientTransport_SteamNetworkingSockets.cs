@@ -20,6 +20,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 		{
 			connectedCallback = callback;
 			this.failureCallback = failureCallback;
+			connectStartTime = UnityEngine.Time.realtimeSinceStartup;
 
 			steamNetConnectionStatusChanged = Callback<SteamNetConnectionStatusChangedCallback_t>.Create(OnSteamNetConnectionStatusChanged);
 			steamNetAuthenticationStatusChanged = Callback<SteamNetAuthenticationStatus_t>.Create(OnSteamNetAuthenticationStatusChanged);
@@ -28,7 +29,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 			if (detailLevel != ESteamNetworkingSocketsDebugOutputType.k_ESteamNetworkingSocketsDebugOutputType_None)
 			{
 				didSetupDebugOutput = true;
-				Log("Client set SNS debug output detail level to {0}", detailLevel);
+				Log("[CONN-STAGE-2/6] Client set SNS debug output detail level to {0}", detailLevel);
 				SteamNetworkingUtils.SetDebugOutputFunction(detailLevel, GetDebugOutputFunction());
 			}
 
@@ -37,7 +38,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 			if (clAllowWithoutAuth)
 			{
 				isWaitingForAuthAvailability = false;
-				Log("Client bypassing test for Steam Networking availability");
+				Log("[CONN-STAGE-2/6] Client bypassing test for Steam Networking availability (clAllowWithoutAuth=true)");
 				Connect();
 			}
 			else
@@ -46,7 +47,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 				ESteamNetworkingAvailability authAvailability = Steamworks.SteamNetworkingSockets.InitAuthentication();
 				if (authAvailability != ESteamNetworkingAvailability.k_ESteamNetworkingAvailability_Current)
 				{
-					Log("Client testing for Steam Networking availability ({0})", authAvailability);
+					Log("[CONN-STAGE-2/6] Client testing for Steam Networking availability ({0})", authAvailability);
 				}
 				HandleAuth(authAvailability);
 			}
@@ -252,24 +253,48 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 				{
 					if (info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected)
 					{
-						Log("Client connection state verified as Connected via status poll (conn {0})", connection);
+						Log("[CONN-STAGE-3/6] Connection state reached Connected via status poll (conn {0})", connection);
 						SteamNetConnectionStatusChangedCallback_t cb = default;
 						cb.m_hConn = connection;
 						cb.m_info = info;
 						cb.m_eOldState = ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connecting;
 						HandleState_Connected(ref cb);
 					}
-					else if (info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connecting)
+					else if (info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connecting ||
+							 info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_FindingRoute)
 					{
 						if (UnityEngine.Time.realtimeSinceStartup - lastConnectingLogTime > 2f)
 						{
 							lastConnectingLogTime = UnityEngine.Time.realtimeSinceStartup;
-							Log("Client connection in progress (conn {0}, state Connecting, debug: '{1}')", connection, info.m_szEndDebug);
+							float elapsed = UnityEngine.Time.realtimeSinceStartup - connectStartTime;
+							Log("[CONN-STAGE-3/6] Connection in progress... State={0}, Conn={1}, Elapsed={2:F1}s, Remote={3}, Desc='{4}'",
+								info.m_eState, connection, elapsed, IdentityToString(info.m_identityRemote), info.m_szConnectionDescription);
+
+							SteamNetConnectionRealTimeStatus_t rtStatus = default;
+							SteamNetConnectionRealTimeLaneStatus_t lanes = default;
+							if (Steamworks.SteamNetworkingSockets.GetConnectionRealTimeStatus(connection, ref rtStatus, 0, ref lanes) == EResult.k_EResultOK)
+							{
+								Log("[CONN-STAGE-3/6] RealTime: Ping={0}ms, QLocal={1:F0}%, QRemote={2:F0}%, TX={3:F1} pkts/s ({4:F1} KB/s), RX={5:F1} pkts/s ({6:F1} KB/s), PendingRel={7}B, UnackedRel={8}B",
+									rtStatus.m_nPing,
+									rtStatus.m_flConnectionQualityLocal * 100f,
+									rtStatus.m_flConnectionQualityRemote * 100f,
+									rtStatus.m_flOutPacketsPerSec,
+									rtStatus.m_flOutBytesPerSec / 1024f,
+									rtStatus.m_flInPacketsPerSec,
+									rtStatus.m_flInBytesPerSec / 1024f,
+									rtStatus.m_cbPendingReliable,
+									rtStatus.m_cbSentUnackedReliable);
+							}
+
+							if (Steamworks.SteamNetworkingSockets.GetDetailedConnectionStatus(connection, out string detailedStatus, 2048) >= 0 && !string.IsNullOrEmpty(detailedStatus))
+							{
+								Log("[CONN-STAGE-3/6] GNS Diagnostic:\n{0}", detailedStatus.TrimEnd());
+							}
 						}
 					}
 					else if (info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ProblemDetectedLocally)
 					{
-						Log("Client connection state problem detected via status poll (conn {0})", connection);
+						Log("[CONN-STAGE-3/6] Connection problem detected locally via poll (conn {0})", connection);
 						SteamNetConnectionStatusChangedCallback_t cb = default;
 						cb.m_hConn = connection;
 						cb.m_info = info;
@@ -277,7 +302,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 					}
 					else if (info.m_eState == ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_ClosedByPeer)
 					{
-						Log("Client connection closed by peer via status poll (conn {0})", connection);
+						Log("[CONN-STAGE-3/6] Connection closed by peer via poll (conn {0})", connection);
 						SteamNetConnectionStatusChangedCallback_t cb = default;
 						cb.m_hConn = connection;
 						cb.m_info = info;
@@ -289,6 +314,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 
 		private void Connect()
 		{
+			connectStartTime = UnityEngine.Time.realtimeSinceStartup;
 			List<SteamNetworkingConfigValue_t> configList = BuildDefaultConfig();
 			SteamNetworkingConfigValue_t[] configArray = configList.ToArray();
 
@@ -303,22 +329,22 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 					// Please refer to ServerConnectParameters.connectionPort for more information.
 					isRemoteUsingFakeIP = true;
 					address.SetIPv4(ipv4, Unturned.Provider.CurrentServerConnectParameters.queryPort);
-					Log("Client connecting to {0} (FakeIP)", AddressToString(address));
+					Log("[CONN-STAGE-2/6] Client connecting to {0} (FakeIP)", AddressToString(address));
 				}
 				else
 				{
 					address.SetIPv4(ipv4, Unturned.Provider.CurrentServerConnectParameters.connectionPort);
-					Log("Client connecting to {0} (IP: {1} Port: {2})", AddressToString(address), Unturned.Provider.CurrentServerConnectParameters.address, Unturned.Provider.CurrentServerConnectParameters.connectionPort);
+					Log("[CONN-STAGE-2/6] Client connecting to {0} (IP: {1} Port: {2})", AddressToString(address), Unturned.Provider.CurrentServerConnectParameters.address, Unturned.Provider.CurrentServerConnectParameters.connectionPort);
 				}
 
 				connection = Steamworks.SteamNetworkingSockets.ConnectByIPAddress(ref address, configArray.Length, configArray);
 				if (connection == HSteamNetConnection.Invalid)
 				{
-					Log("Client failed to establish connection handle (HSteamNetConnection.Invalid)!");
+					Log("[CONN-STAGE-2/6] [ERROR] Client failed to establish connection handle (HSteamNetConnection.Invalid)!");
 				}
 				else
 				{
-					Log("Client created connection handle: {0}", connection);
+					Log("[CONN-STAGE-2/6] Client created connection handle: {0}", connection);
 				}
 			}
 			else
@@ -326,7 +352,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 				SteamNetworkingIdentity identity = new SteamNetworkingIdentity();
 				identity.SetSteamID(Unturned.Provider.CurrentServerConnectParameters.steamId);
 				connection = Steamworks.SteamNetworkingSockets.ConnectP2P(ref identity, 0, configArray.Length, configArray);
-				Log("Client connecting to {0} (P2P)", IdentityToString(identity));
+				Log("[CONN-STAGE-2/6] Client connecting to {0} (P2P)", IdentityToString(identity));
 			}
 		}
 
@@ -337,17 +363,22 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 		{
 			if (callback.m_hConn != connection)
 			{
-				DebugLog("Unknown connection with {0} status changed", IdentityToString(callback.m_info.m_identityRemote));
+				Log("[CONN-STAGE-4/6] Unknown connection with {0} status changed (conn={1}, expected={2})", IdentityToString(callback.m_info.m_identityRemote), callback.m_hConn, connection);
 				return;
 			}
 
-			DebugLog("Connection with {0} changed state from {1} to {2}", IdentityToString(callback.m_info.m_identityRemote), callback.m_eOldState, callback.m_info.m_eState);
+			ESteamNetConnectionEnd endReasonEnum = ESteamNetConnectionEnd.k_ESteamNetConnectionEnd_Invalid;
+			try { endReasonEnum = (ESteamNetConnectionEnd)callback.m_info.m_eEndReason; } catch { }
+
+			Log("[CONN-STAGE-4/6] State Transition: Conn={0}, Peer={1}, {2} -> {3}, EndReason={4} ({5}), Debug='{6}'",
+				callback.m_hConn, IdentityToString(callback.m_info.m_identityRemote), callback.m_eOldState, callback.m_info.m_eState, callback.m_info.m_eEndReason, endReasonEnum, callback.m_info.m_szEndDebug);
+
 			switch (callback.m_info.m_eState)
 			{
 				case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_None:
 				case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connecting:
 				case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_FindingRoute:
-					return; // Handle case just to avoid the unknown state logging.
+					return; // State transition already logged above.
 
 				case ESteamNetworkingConnectionState.k_ESteamNetworkingConnectionState_Connected:
 					HandleState_Connected(ref callback);
@@ -362,7 +393,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 					return;
 
 				default:
-					DebugLog("Connection with {0} in unhandled state {1}", IdentityToString(callback.m_info.m_identityRemote), callback.m_info.m_eState);
+					Log("[CONN-STAGE-4/6] Connection with {0} in unhandled state {1}", IdentityToString(callback.m_info.m_identityRemote), callback.m_info.m_eState);
 					return;
 			}
 		}
@@ -373,7 +404,8 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 				return;
 
 			isConnected = true;
-			Log("Client connection with {0} ready", connection);
+			float elapsed = UnityEngine.Time.realtimeSinceStartup - connectStartTime;
+			Log("[CONN-STAGE-4/6] [SUCCESS] Connection established! GNS state=Connected, Conn={0}, Elapsed={1:F2}s", connection, elapsed);
 			connectedCallback();
 			connectedCallback = null; // Prevent accidentally calling it multiple times.
 		}
@@ -531,7 +563,18 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 		/// </summary>
 		private void HandleState_ClosedByPeer(ref SteamNetConnectionStatusChangedCallback_t callback)
 		{
-			Log("Client connection closed by peer ({0}) \"{1}\"", callback.m_info.m_eEndReason, callback.m_info.m_szEndDebug);
+			ESteamNetConnectionEnd endReasonEnum = ESteamNetConnectionEnd.k_ESteamNetConnectionEnd_Invalid;
+			try { endReasonEnum = (ESteamNetConnectionEnd)callback.m_info.m_eEndReason; } catch { }
+			string failureExplanation = GetMessageForEndReason(callback.m_info.m_eEndReason);
+
+			Log("[CONN-STAGE-4/6] [DISCONNECTED] Closed by peer! EndReason={0} ({1}), Debug='{2}', Explanation='{3}'",
+				callback.m_info.m_eEndReason, endReasonEnum, callback.m_info.m_szEndDebug, failureExplanation);
+
+			if (Steamworks.SteamNetworkingSockets.GetDetailedConnectionStatus(callback.m_hConn, out string detailedStatus, 2048) >= 0 && !string.IsNullOrEmpty(detailedStatus))
+			{
+				Log("[CONN-STAGE-4/6] GNS Snapshot at closed by peer:\n{0}", detailedStatus.TrimEnd());
+			}
+
 			didCloseConnection = true;
 			bool result = Steamworks.SteamNetworkingSockets.CloseConnection(callback.m_hConn, 0, null, false);
 			if (!result)
@@ -546,7 +589,18 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 		/// </summary>
 		private void HandleState_ProblemDetectedLocally(ref SteamNetConnectionStatusChangedCallback_t callback)
 		{
-			Log("Client connection problem detected locally ({0}) \"{1}\"", callback.m_info.m_eEndReason, callback.m_info.m_szEndDebug);
+			ESteamNetConnectionEnd endReasonEnum = ESteamNetConnectionEnd.k_ESteamNetConnectionEnd_Invalid;
+			try { endReasonEnum = (ESteamNetConnectionEnd)callback.m_info.m_eEndReason; } catch { }
+			string failureExplanation = GetMessageForEndReason(callback.m_info.m_eEndReason);
+
+			Log("[CONN-STAGE-4/6] [ERROR] Problem detected locally! EndReason={0} ({1}), Debug='{2}', Explanation='{3}'",
+				callback.m_info.m_eEndReason, endReasonEnum, callback.m_info.m_szEndDebug, failureExplanation);
+
+			if (Steamworks.SteamNetworkingSockets.GetDetailedConnectionStatus(callback.m_hConn, out string detailedStatus, 2048) >= 0 && !string.IsNullOrEmpty(detailedStatus))
+			{
+				Log("[CONN-STAGE-4/6] GNS Snapshot at problem detected locally:\n{0}", detailedStatus.TrimEnd());
+			}
+
 			didCloseConnection = true;
 			bool result = Steamworks.SteamNetworkingSockets.CloseConnection(callback.m_hConn, 0, null, false);
 			if (!result)
@@ -638,6 +692,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 		private bool didSetupDebugOutput;
 		private bool isRemoteUsingFakeIP;
 		private float lastConnectingLogTime;
+		private float connectStartTime;
 
 		/// <summary>
 		/// Recycled array for every read call.

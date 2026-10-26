@@ -1142,8 +1142,7 @@ namespace Steamworks {
             return NativeGameNetworkingSockets.GetConnectionRealTimeStatus(hConn, ref pStatus, nLanes, ref pLanes);
         }
         public static int GetDetailedConnectionStatus(HSteamNetConnection hConn, out string pszBuf, int cbBuf) {
-            pszBuf = default;
-            return 0;
+            return NativeGameNetworkingSockets.GetDetailedConnectionStatus(hConn, out pszBuf, cbBuf);
         }
         public static bool GetListenSocketAddress(HSteamListenSocket hSocket, out SteamNetworkingIPAddr address) {
             address = default;
@@ -2837,8 +2836,7 @@ namespace Steamworks {
             return NativeGameNetworkingSockets.GetConnectionRealTimeStatus(hConn, ref pStatus, nLanes, ref pLanes);
         }
         public static int GetDetailedConnectionStatus(HSteamNetConnection hConn, out string pszBuf, int cbBuf) {
-            pszBuf = default;
-            return 0;
+            return NativeGameNetworkingSockets.GetDetailedConnectionStatus(hConn, out pszBuf, cbBuf);
         }
         public static bool GetListenSocketAddress(HSteamListenSocket hSocket, out SteamNetworkingIPAddr address) {
             address = default;

@@ -102,6 +102,9 @@ namespace Steamworks {
         private static extern EResult SteamAPI_ISteamNetworkingSockets_GetConnectionRealTimeStatus(IntPtr self, HSteamNetConnection hConn, ref SteamNetConnectionRealTimeStatus_t pStatus, int nLanes, ref SteamNetConnectionRealTimeLaneStatus_t pLanes);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern int SteamAPI_ISteamNetworkingSockets_GetDetailedConnectionStatus(IntPtr self, HSteamNetConnection hConn, [Out] byte[] pszBuf, int cbBuf);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void SteamAPI_ISteamNetworkingSockets_RunCallbacks(IntPtr self);
 
         [AOT.MonoPInvokeCallback(typeof(FnSteamNetConnectionStatusChanged))]
@@ -310,6 +313,34 @@ namespace Steamworks {
                             m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 2 }
                         });
                     }
+                    if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_PacketDecode)) {
+                        optList.Add(new SteamNetworkingConfigValue_t {
+                            m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_PacketDecode,
+                            m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
+                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 7 } // Verbose
+                        });
+                    }
+                    if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_Message)) {
+                        optList.Add(new SteamNetworkingConfigValue_t {
+                            m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_Message,
+                            m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
+                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 7 }
+                        });
+                    }
+                    if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_AckRTT)) {
+                        optList.Add(new SteamNetworkingConfigValue_t {
+                            m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_AckRTT,
+                            m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
+                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 7 }
+                        });
+                    }
+                    if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_PacketGaps)) {
+                        optList.Add(new SteamNetworkingConfigValue_t {
+                            m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_LogLevel_PacketGaps,
+                            m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
+                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 7 }
+                        });
+                    }
                     var actualOpts = optList.ToArray();
 
                     HSteamNetConnection conn = SteamAPI_ISteamNetworkingSockets_ConnectByIPAddress(interfacePtr, ref address, actualOpts.Length, actualOpts);
@@ -380,6 +411,26 @@ namespace Steamworks {
                 } catch { }
             }
             return EResult.k_EResultFail;
+        }
+
+        public static int GetDetailedConnectionStatus(HSteamNetConnection hConn, out string pszBuf, int cbBuf) {
+            if (EnsureInitialized() && interfacePtr != IntPtr.Zero) {
+                try {
+                    int bufferSize = (cbBuf > 0) ? cbBuf : 4096;
+                    byte[] buf = new byte[bufferSize];
+                    int ret = SteamAPI_ISteamNetworkingSockets_GetDetailedConnectionStatus(interfacePtr, hConn, buf, buf.Length);
+                    if (ret >= 0) {
+                        int nullIdx = Array.IndexOf(buf, (byte)0);
+                        int len = (nullIdx >= 0) ? nullIdx : Math.Min(ret, buf.Length);
+                        pszBuf = System.Text.Encoding.UTF8.GetString(buf, 0, len);
+                        return ret;
+                    }
+                } catch (Exception ex) {
+                    SteamShimLogger.Warn($"[SteamNetworkingSockets] GetDetailedConnectionStatus note: {ex.Message}");
+                }
+            }
+            pszBuf = string.Empty;
+            return -1;
         }
 
         public static void RunCallbacks() {

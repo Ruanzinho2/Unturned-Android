@@ -17,6 +17,17 @@ namespace SDG.Unturned
 			reader.ReadEnum(out rejection);
 			reader.ReadString(out explanation);
 
+			UnturnedLog.info("================================================================================");
+			UnturnedLog.info("[CONN-STAGE-6/6] [AUTH REJECTED] Server REJECTED connection!");
+			UnturnedLog.info($"[CONN-STAGE-6/6] Rejection Code: {rejection} (int: {(int)rejection})");
+			UnturnedLog.info($"[CONN-STAGE-6/6] Server Explanation: \"{explanation}\"");
+			string diag = GetDiagnosisForRejection(rejection);
+			if (!string.IsNullOrEmpty(diag))
+			{
+				UnturnedLog.info($"[CONN-STAGE-6/6] DIAGNOSIS: {diag}");
+			}
+			UnturnedLog.info("================================================================================");
+
 			Provider._connectionFailureReason = string.Empty;
 
 			if (rejection == ESteamRejection.WHITELISTED)
@@ -266,7 +277,52 @@ namespace SDG.Unturned
 				Provider._connectionFailureReason = rejection.ToString();
 			}
 
-			Provider.RequestDisconnect($"Rejected by server ({rejection}) --- Reason: \"{Provider.connectionFailureReason}\" Explanation: \"{explanation}\"");
+			Provider.RequestDisconnect($"[AUTH REJECTED] Server rejected ({rejection}): \"{Provider.connectionFailureReason}\" Explanation: \"{explanation}\"");
+		}
+
+		private static string GetDiagnosisForRejection(ESteamRejection rejection)
+		{
+			switch (rejection)
+			{
+				case ESteamRejection.AUTH_VERIFICATION:
+					return "Steam Backend Auth Verification Failed. O servidor submeteu o ticket para validação na API da Steam (ISteamGameServer::BeginAuthSession), mas o backend da Valve rejeitou o ticket. Possíveis causas: servidor seguro exige ticket assinado pelos servidores oficiais da Valve ou conta sem licença confirmada.";
+				case ESteamRejection.AUTH_NO_STEAM:
+					return "O servidor exige autenticação ativa da Steam e rejeitou o ticket por estar vazio ou ausente.";
+				case ESteamRejection.AUTH_TICKET_INVALID:
+					return "O ticket de autenticação fornecido possui formato inválido ou assinatura incorreta.";
+				case ESteamRejection.AUTH_VAC_BAN:
+					return "A conta Steam possui banimento VAC ativo para Unturned.";
+				case ESteamRejection.AUTH_LICENSE_EXPIRED:
+					return "A conta Steam não possui licença do Unturned (AppID 304930).";
+				case ESteamRejection.AUTH_ELSEWHERE:
+					return "A conta Steam já está conectada em outro servidor de Unturned.";
+				case ESteamRejection.AUTH_TIMED_OUT:
+					return "O servidor de jogo não obteve resposta a tempo dos servidores da Valve ao validar o ticket.";
+				case ESteamRejection.AUTH_USED:
+					return "O ticket de autenticação já foi utilizado.";
+				case ESteamRejection.AUTH_NETWORK_IDENTITY_FAILURE:
+					return "A identidade da conexão GNS não corresponde à identidade da conta Steam do ticket.";
+				case ESteamRejection.AUTH_ECON_DESERIALIZE:
+				case ESteamRejection.AUTH_ECON_VERIFY:
+					return "Falha na verificação de inventário/economia da Steam pelo servidor.";
+				case ESteamRejection.WRONG_PASSWORD:
+					return "Senha de acesso ao servidor incorreta.";
+				case ESteamRejection.SERVER_FULL:
+					return "O servidor está lotado.";
+				case ESteamRejection.WRONG_VERSION:
+					return "Versão do cliente incompatível com o servidor.";
+				case ESteamRejection.WRONG_HASH_LEVEL:
+				case ESteamRejection.WRONG_HASH_ASSEMBLY:
+					return "Arquivos do jogo modificados ou incompatíveis com o servidor.";
+				case ESteamRejection.WHITELISTED:
+					return "O servidor está operando em lista de permissões (Whitelist) e o usuário não está autorizado.";
+				case ESteamRejection.LATE_PENDING_STEAM_AUTH:
+					return "O servidor ainda não recebeu a confirmação do ticket de autenticação dos servidores da Steam.";
+				case ESteamRejection.ALREADY_CONNECTED:
+					return "Jogador já registrado como conectado no servidor.";
+				default:
+					return null;
+			}
 		}
 	}
 }
