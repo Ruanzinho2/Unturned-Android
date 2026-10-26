@@ -1740,7 +1740,11 @@ namespace SDG.Unturned
 			if (advertisement != null)
 			{
 				UnturnedLog.info($"[CONN-STAGE-1/6] Advertisement: Name='{advertisement.name}', Map='{advertisement.map}', Players={advertisement.players}/{advertisement.maxPlayers}, Ping={advertisement.PingMs}ms");
+#if WITH_THIRDPARTYAC
 				UnturnedLog.info($"[CONN-STAGE-1/6] Security Info: VACSecure={advertisement.IsVACSecure}, BattlEye={advertisement.IsThirdpartyAntiCheatEnabled}, Transport='{advertisement.networkTransport}'");
+#else
+				UnturnedLog.info($"[CONN-STAGE-1/6] Security Info: VACSecure={advertisement.IsVACSecure}, Transport='{advertisement.networkTransport}'");
+#endif
 			}
 			else
 			{
