@@ -123,6 +123,12 @@ namespace SDG.Unturned
 
 		private static void OnClickedConnectButton(ISleekElement button)
 		{
+			if (Provider.isConnected)
+			{
+				return;
+			}
+			connectButton.IsClickable = false;
+			Provider.UpdateClientSteamCredentials();
 			if (!string.IsNullOrEmpty(passwordField.Text))
 			{
 				ServerConnectParameters connectParameters = new ServerConnectParameters(new global::Unturned.SystemEx.IPv4Address(serverInfo.ip), serverInfo.queryPort, serverInfo.connectionPort, passwordField.Text);

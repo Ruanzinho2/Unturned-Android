@@ -120,6 +120,9 @@ namespace Steamworks {
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void SteamAPI_ISteamNetworkingSockets_RunCallbacks(IntPtr self);
 
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void SteamAPI_SteamNetworkingMessage_t_Release(IntPtr pMsg);
+
         [AOT.MonoPInvokeCallback(typeof(FnSteamNetConnectionStatusChanged))]
         private static void OnNativeConnectionStatusChanged(IntPtr pInfo) {
             try {
@@ -163,18 +166,8 @@ namespace Steamworks {
 
         public static void SetUserDebugOutputFunction(ESteamNetworkingSocketsDebugOutputType eDetailLevel, FSteamNetworkingSocketsDebugOutput pfnFunc) {
             UserDebugOutputCallback = pfnFunc;
-            if (EnsureInitialized() && interfaceUtilsPtr != IntPtr.Zero) {
-                try {
-                    if (debugOutputCallbackDelegate == null) {
-                        debugOutputCallbackDelegate = OnNativeDebugOutput;
-                    }
-                    IntPtr fnDbg = Marshal.GetFunctionPointerForDelegate(debugOutputCallbackDelegate);
-                    SteamAPI_ISteamNetworkingUtils_SetDebugOutputFunction(interfaceUtilsPtr, (int)eDetailLevel, fnDbg);
-                    SteamShimLogger.Info($"[SteamNetworkingSockets] SetDebugOutputFunction updated to level {eDetailLevel}.");
-                } catch (Exception ex) {
-                    SteamShimLogger.Warn($"[SteamNetworkingSockets] SetDebugOutputFunction note: {ex.Message}");
-                }
-            }
+            // Native callback registration is intentionally omitted on Android IL2CPP because GNS invokes
+            // debug spew directly from unattached C++ native pthreads (ServiceThread, UDP thread), causing SIGSEGV crashes.
         }
 
         public static bool EnsureInitialized() {
@@ -212,15 +205,12 @@ namespace Steamworks {
                                 SteamShimLogger.Warn($"[SteamNetworkingSockets] Note setting AppID in CSteamNetworkingUtils: {appIdEx.Message}");
                             }
 
+                            // NOTE: We deliberately do NOT register SetDebugOutputFunction because GNS calls it directly
+                            // from its C++ native ServiceThread and UDP worker pthreads. Calling into IL2CPP and allocating
+                            // managed objects (strings, logs) from an unattached pthread causes SIGSEGV crashes on Android.
                             try {
-                                debugOutputCallbackDelegate = OnNativeDebugOutput;
-                                IntPtr fnDbg = Marshal.GetFunctionPointerForDelegate(debugOutputCallbackDelegate);
-                                // Set debug detail to Msg (5) for clean logging without thread starvation
-                                SteamAPI_ISteamNetworkingUtils_SetDebugOutputFunction(interfaceUtilsPtr, 5 /* k_ESteamNetworkingSocketsDebugOutputType_Msg */, fnDbg);
-                                SteamShimLogger.Info("[SteamNetworkingSockets] Native debug output function registered at level Msg (5).");
-                            } catch (Exception dbgEx) {
-                                SteamShimLogger.Warn($"[SteamNetworkingSockets] Debug output registration note: {dbgEx.Message}");
-                            }
+                                SteamAPI_ISteamNetworkingUtils_SetDebugOutputFunction(interfaceUtilsPtr, 0 /* None */, IntPtr.Zero);
+                            } catch { }
 
                             try {
                                 // Keep standard log levels for clean performance
@@ -578,6 +568,14 @@ namespace Steamworks {
                 } catch { }
             }
             return 0;
+        }
+
+        public static void ReleaseMessage(IntPtr pMsg) {
+            if (pMsg != IntPtr.Zero) {
+                try {
+                    SteamAPI_SteamNetworkingMessage_t_Release(pMsg);
+                } catch { }
+            }
         }
 
         public static bool GetConnectionInfo(HSteamNetConnection hConn, out SteamNetConnectionInfo_t pInfo) {

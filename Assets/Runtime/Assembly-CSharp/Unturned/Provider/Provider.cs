@@ -1677,7 +1677,13 @@ namespace SDG.Unturned
 							}
 
 							writer.WriteBytes(TempSteamworksEconomy.econInfoHash, 20);
-							writer.WriteSteamID(user);
+							CSteamID outgoingSteamID = SteamUser.GetSteamID();
+							if (!outgoingSteamID.IsValid() || outgoingSteamID.m_SteamID == 0)
+							{
+								outgoingSteamID = user;
+							}
+							UnturnedLog.info($"[CONN-STAGE-6/6] Sending ReadyToConnect with SteamID={outgoingSteamID} (user={user})");
+							writer.WriteSteamID(outgoingSteamID);
 						});
 					}
 				}
@@ -1705,8 +1711,16 @@ namespace SDG.Unturned
 		{
 			if (isConnected)
 			{
+				UnturnedLog.warn("[Provider.connect] Already connected or connecting. Ignoring duplicate connect call.");
 				return;
 			}
+			_isConnected = true;
+
+			// Ensure local Steam credentials are fresh and synchronized with SteamUser
+			UpdateClientSteamCredentials();
+			_user = SteamUser.GetSteamID();
+			_client = _user;
+			_clientHash = Hash.SHA1(client);
 
 			connectionStartTime = Time.realtimeSinceStartup;
 			if (!parameters.steamId.IsValid() && advertisement != null && advertisement.steamID.IsValid())
@@ -1734,9 +1748,13 @@ namespace SDG.Unturned
 				UnturnedLog.info("[CONN-STAGE-1/6] Advertisement: <null> (Direct Connect / Manual Parameters)");
 			}
 #if UNITY_ANDROID && !UNITY_EDITOR
-			UnturnedLog.info($"[CONN-STAGE-1/6] Local Steam Identity: SteamBridge.IsLoggedOn={SteamBridge.IsLoggedOn}, SteamID={SteamUser.GetSteamID()}, PersonaName='{SteamFriends.GetPersonaName()}'");
+			UnturnedLog.info($"[CONN-STAGE-1/6] Local Steam Identity: SteamBridge.IsLoggedOn={SteamBridge.IsLoggedOn}, SteamID={SteamUser.GetSteamID()}, Provider.user={_user}, PersonaName='{SteamFriends.GetPersonaName()}'");
+			if (!SteamBridge.IsLoggedOn && (advertisement?.IsVACSecure ?? true))
+			{
+				UnturnedLog.warn("[CONN-STAGE-1/6] WARNING: Steam is not logged on. Connecting to a VAC-secured server without a Valve certificate will fail!");
+			}
 #else
-			UnturnedLog.info($"[CONN-STAGE-1/6] Local Steam Identity: SteamUser.BLoggedOn={SteamUser.BLoggedOn()}, SteamID={SteamUser.GetSteamID()}, PersonaName='{SteamFriends.GetPersonaName()}'");
+			UnturnedLog.info($"[CONN-STAGE-1/6] Local Steam Identity: SteamUser.BLoggedOn={SteamUser.BLoggedOn()}, SteamID={SteamUser.GetSteamID()}, Provider.user={_user}, PersonaName='{SteamFriends.GetPersonaName()}'");
 #endif
 			UnturnedLog.info("================================================================================");
 
@@ -1745,7 +1763,6 @@ namespace SDG.Unturned
 			isWhitelisted = false;
 			isVacActive = false; // Unknown until initial response is received.
 			isThirdpartyAntiCheatActive = false; // Unknown until initial response is received.
-			_isConnected = true;
 			_queuePosition = 0;
 
 			resetChannels();
@@ -2680,6 +2697,7 @@ namespace SDG.Unturned
 					_clientHash = Hash.SHA1(client);
 				}
 
+				_server = new CSteamID();
 				_isServer = false;
 				_isClient = false;
 			}
@@ -2732,6 +2750,12 @@ namespace SDG.Unturned
 #endif // !DEDICATED_SERVER
 
 			isLoadingInventory = true;
+
+			try
+			{
+				UpdateClientSteamCredentials();
+			}
+			catch { }
 
 			UnturnedLog.info("Disconnected");
 		}

@@ -2589,7 +2589,11 @@ namespace Steamworks
 		/// You MUST call this when you're done with the object,
 		/// to free up memory, etc.
 		/// This is a Steamworks.NET extension.
-		public static void Release(IntPtr pointer) { }
+		public static void Release(IntPtr pointer) {
+			if (pointer != IntPtr.Zero) {
+				NativeGameNetworkingSockets.ReleaseMessage(pointer);
+			}
+		}
 
 		/// Convert an IntPtr received from ISteamNetworkingSockets.ReceiveMessagesOnPollGroup into our structure.
 		/// This is a Steamworks.NET extension.

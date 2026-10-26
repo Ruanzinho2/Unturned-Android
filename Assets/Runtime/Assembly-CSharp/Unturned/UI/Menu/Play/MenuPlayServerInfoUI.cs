@@ -408,12 +408,25 @@ namespace SDG.Unturned
 			}
 
 			active = false;
+			if (joinButton != null)
+			{
+				joinButton.isClickable = true;
+			}
 
 			container.AnimateOutOfView(0, 1);
 		}
 
 		private static void onClickedJoinButton(ISleekElement button)
 		{
+			if (Provider.isConnected)
+			{
+				return;
+			}
+			if (joinButton != null)
+			{
+				joinButton.isClickable = false;
+			}
+			Provider.UpdateClientSteamCredentials();
 			IPv4Address ipv4Address = new IPv4Address(serverInfo.ip);
 
 			// serverPassword may already be filled out from the connect menu, joining a friend, auto-join, etc.
@@ -1409,6 +1422,10 @@ namespace SDG.Unturned
 			container.SizeScale_Y = 1;
 			MenuUI.container.AddChild(container);
 			active = false;
+			if (joinButton != null)
+			{
+				joinButton.isClickable = true;
+			}
 
 			infoContainer = Glazier.Get().CreateFrame();
 			infoContainer.PositionOffset_Y = 94;
