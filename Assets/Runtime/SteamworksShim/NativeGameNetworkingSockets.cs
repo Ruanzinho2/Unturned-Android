@@ -396,7 +396,7 @@ namespace Steamworks {
                     return false;
                 }
 
-                SteamShimLogger.Info($"[SteamNetworkingSockets] Obtained signed certificate ({signedCertBlob.Length} bytes). Installing into GNS...");
+                SteamShimLogger.Info($"[SteamNetworkingSockets] Obtained signed certificate ({signedCertBlob.Length} bytes): {BitConverter.ToString(signedCertBlob).Replace("-", "")}. Installing into GNS...");
 
                 // Step 4: Install signed certificate into GNS
                 errMsg.Clear();
