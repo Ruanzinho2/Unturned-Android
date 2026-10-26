@@ -320,7 +320,7 @@ public class SteamBridge {
             }
 
             byte[] cert = cb.getCertificate();
-            long caKeyId = cb.getCaKeyId();
+            long caKeyId = cb.getCaKeyID();
             byte[] caSig = cb.getCaSignature();
 
             Log.i(TAG, "Received certificate from Steam CM! certLen=" + (cert != null ? cert.length : 0)
