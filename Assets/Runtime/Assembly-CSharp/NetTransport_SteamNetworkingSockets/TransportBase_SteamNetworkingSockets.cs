@@ -141,7 +141,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 			SteamNetworkingConfigValue_t allowWithoutAuth = new SteamNetworkingConfigValue_t();
 			allowWithoutAuth.m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32;
 			allowWithoutAuth.m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth;
-			allowWithoutAuth.m_val.m_int32 = 1; // 1 = Attempt auth, fallback to unauthenticated if not possible
+			allowWithoutAuth.m_val.m_int32 = 2; // 2 = Allow unsigned local certificates (prevents "Need a cert authority!" 5002 on standalone Android)
 			configList.Add(allowWithoutAuth);
 
 			if (clSendBufferSize.hasValue && clSendBufferSize.value > 0)
