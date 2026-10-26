@@ -288,8 +288,6 @@ namespace SDG.Unturned
 					return "Steam Backend Auth Verification Failed. O servidor submeteu o ticket para validação na API da Steam (ISteamGameServer::BeginAuthSession), mas o backend da Valve rejeitou o ticket. Possíveis causas: servidor seguro exige ticket assinado pelos servidores oficiais da Valve ou conta sem licença confirmada.";
 				case ESteamRejection.AUTH_NO_STEAM:
 					return "O servidor exige autenticação ativa da Steam e rejeitou o ticket por estar vazio ou ausente.";
-				case ESteamRejection.AUTH_TICKET_INVALID:
-					return "O ticket de autenticação fornecido possui formato inválido ou assinatura incorreta.";
 				case ESteamRejection.AUTH_VAC_BAN:
 					return "A conta Steam possui banimento VAC ativo para Unturned.";
 				case ESteamRejection.AUTH_LICENSE_EXPIRED:
