@@ -130,8 +130,8 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 				}
 			}
 
-			// Output detailed networking trace for debugging multiplayer on Android
-			return ESteamNetworkingSocketsDebugOutputType.k_ESteamNetworkingSocketsDebugOutputType_Everything;
+			// Detail level on Android: Msg (important connection events, errors, warnings)
+			return ESteamNetworkingSocketsDebugOutputType.k_ESteamNetworkingSocketsDebugOutputType_Msg;
 		}
 
 		protected virtual List<SteamNetworkingConfigValue_t> BuildDefaultConfig()

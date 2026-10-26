@@ -215,46 +215,32 @@ namespace Steamworks {
                             try {
                                 debugOutputCallbackDelegate = OnNativeDebugOutput;
                                 IntPtr fnDbg = Marshal.GetFunctionPointerForDelegate(debugOutputCallbackDelegate);
-                                // Set debug detail to 8 (Everything: full packet breakdown, crypto state, network transitions)
-                                SteamAPI_ISteamNetworkingUtils_SetDebugOutputFunction(interfaceUtilsPtr, 8 /* k_ESteamNetworkingSocketsDebugOutputType_Everything */, fnDbg);
-                                SteamShimLogger.Info("[SteamNetworkingSockets] Native debug output function registered at level Everything (8).");
+                                // Set debug detail to Msg (5) for clean logging without thread starvation
+                                SteamAPI_ISteamNetworkingUtils_SetDebugOutputFunction(interfaceUtilsPtr, 5 /* k_ESteamNetworkingSocketsDebugOutputType_Msg */, fnDbg);
+                                SteamShimLogger.Info("[SteamNetworkingSockets] Native debug output function registered at level Msg (5).");
                             } catch (Exception dbgEx) {
                                 SteamShimLogger.Warn($"[SteamNetworkingSockets] Debug output registration note: {dbgEx.Message}");
                             }
 
                             try {
-                                // Enable verbose packet decoding and transport logging
-                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 13 /* LogLevel_AckRTT */, 8);
-                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 14 /* LogLevel_PacketDecode */, 8);
-                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 15 /* LogLevel_Message */, 8);
-                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 16 /* LogLevel_PacketGaps */, 8);
-                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 17 /* LogLevel_P2PRendezvous */, 8);
-                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 18 /* LogLevel_SDRRelayPings */, 8);
-
-                                // Trace raw UDP packets on the wire (up to 512 bytes)
-                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 41 /* k_ESteamNetworkingConfig_PacketTraceMaxBytes */, 512);
+                                // Keep standard log levels for clean performance
+                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 15 /* LogLevel_Message */, 5);
+                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 17 /* LogLevel_P2PRendezvous */, 5);
+                                SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 18 /* LogLevel_SDRRelayPings */, 5);
 
                                 // On Android without a desktop Steam client CA, IP_AllowWithoutAuth must be 2 (AllowLocalUnsignedCert)
                                 // to use self-signed local certs with our verified SteamID, preventing "Need a cert authority!" (5002) error.
                                 bool gCfg = SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 23 /* k_ESteamNetworkingConfig_IP_AllowWithoutAuth */, 2);
-                                SteamShimLogger.Info($"[SteamNetworkingSockets] SetGlobalConfigValueInt32 IP_AllowWithoutAuth=2 result: {gCfg}, PacketTraceMaxBytes=512, log levels set to Everything (8)");
+                                SteamShimLogger.Info($"[SteamNetworkingSockets] SetGlobalConfigValueInt32 IP_AllowWithoutAuth=2 result: {gCfg}, log levels set to Msg (5)");
                             } catch (Exception cfgEx) {
                                 SteamShimLogger.Warn($"[SteamNetworkingSockets] Global config note: {cfgEx.Message}");
                             }
 
-                            try {
-                                statusChangedCallbackDelegate = OnNativeConnectionStatusChanged;
-                                IntPtr fnStatus = Marshal.GetFunctionPointerForDelegate(statusChangedCallbackDelegate);
-                                SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetConnectionStatusChanged(interfaceUtilsPtr, fnStatus);
-
-                                authChangedCallbackDelegate = OnNativeAuthenticationStatusChanged;
-                                IntPtr fnAuth = Marshal.GetFunctionPointerForDelegate(authChangedCallbackDelegate);
-                                SteamAPI_ISteamNetworkingUtils_SetGlobalCallback_SteamNetAuthenticationStatusChanged(interfaceUtilsPtr, fnAuth);
-
-                                SteamShimLogger.Info("[SteamNetworkingSockets] Native global status and auth callbacks registered.");
-                            } catch (Exception cbEx) {
-                                SteamShimLogger.Warn($"[SteamNetworkingSockets] Callback registration note: {cbEx.Message}");
-                            }
+                            // NOTE: We deliberately do NOT register SetGlobalCallback_SteamNetConnectionStatusChanged
+                            // because GNS calls it directly on the C++ ServiceThread. Calling into IL2CPP and marshaling
+                            // complex structs with managed arrays from an unattached pthread causes SIGSEGV crashes.
+                            // ClientTransport_SteamNetworkingSockets polls GetConnectionInfo on the Unity main thread in
+                            // OnUpdate(), which is 100% thread-safe and deterministic.
                         }
 
                         if (interfacePtr != IntPtr.Zero) {

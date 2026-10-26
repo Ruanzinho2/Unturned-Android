@@ -66,15 +66,21 @@ namespace SDG.Unturned
 
 			string bookmarkHost;
 			reader.ReadString(out bookmarkHost);
+			if (bookmarkHost != null) bookmarkHost = bookmarkHost.Replace("\0", string.Empty);
 			UnturnedLog.info($"Server bookmark host: \"{bookmarkHost}\"");
 
 			string thumbnailUrl;
 			reader.ReadString(out thumbnailUrl);
+			if (thumbnailUrl != null) thumbnailUrl = thumbnailUrl.Replace("\0", string.Empty);
 			UnturnedLog.info($"Server thumbnail URL: \"{thumbnailUrl}\"");
 
 			string description;
 			reader.ReadString(out description);
+			if (description != null) description = description.Replace("\0", string.Empty);
 			UnturnedLog.info($"Server description: \"{description}\"");
+
+			if (serverName != null) serverName = serverName.Replace("\0", string.Empty);
+			if (levelName != null) levelName = levelName.Replace("\0", string.Empty);
 
 			bool hasAllowedAddress = Provider.clientTransport.TryGetIPv4Address(out IPv4Address allowedAddress);
 			uint allowedIP = hasAllowedAddress ? allowedAddress.value : 0;

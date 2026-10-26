@@ -1998,7 +1998,9 @@ namespace SDG.Unturned
 			return true;
 		}
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+#if UNITY_ANDROID && !UNITY_EDITOR
+		private const bool shouldIgnoreServerWorkshopFiles = true;
+#elif UNITY_EDITOR || DEVELOPMENT_BUILD
 		private static CommandLineFlag shouldIgnoreServerWorkshopFiles = new CommandLineFlag(false, "-IgnoreServerWorkshopFiles");
 #else
 		private const bool shouldIgnoreServerWorkshopFiles = false;

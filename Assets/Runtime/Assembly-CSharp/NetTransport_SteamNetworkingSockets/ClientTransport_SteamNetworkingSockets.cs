@@ -363,6 +363,12 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 				SteamNetworkingIdentity identity = new SteamNetworkingIdentity();
 				identity.SetSteamID(Unturned.Provider.CurrentServerConnectParameters.steamId);
 				connection = Steamworks.SteamNetworkingSockets.ConnectP2P(ref identity, 0, configArray.Length, configArray);
+				if (connection == HSteamNetConnection.Invalid)
+				{
+					Log("[CONN-STAGE-2/6] [ERROR] Client failed to establish P2P connection handle!");
+					InvokeFailureCallback("failed to create client P2P connection handle (direct IP recommended)");
+					return;
+				}
 				Log("[CONN-STAGE-2/6] Client connecting to {0} (P2P)", IdentityToString(identity));
 			}
 		}

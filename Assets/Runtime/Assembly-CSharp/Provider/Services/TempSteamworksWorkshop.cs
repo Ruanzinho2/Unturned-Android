@@ -573,6 +573,14 @@ namespace SDG.Provider
 				enqueueServerItemDownloadOrInstallFromCache(file);
 			}
 
+#if UNITY_ANDROID && !UNITY_EDITOR
+			if (installing.Count > 0)
+			{
+				UnturnedLog.warn($"[TempSteamworksWorkshop] Android: Bypassing download for {installing.Count} workshop items.");
+				installing.Clear();
+			}
+#endif
+
 			if (installing.Count < 1)
 			{
 				UnturnedLog.info("Server has {0} valid workshop item(s), but we already have them downloaded", itemIDs.Count);
@@ -756,10 +764,22 @@ namespace SDG.Provider
 			serverPendingIDs = fileIDs;
 			serverDownloadIP = serverIP;
 
+#if UNITY_ANDROID && !UNITY_EDITOR
+			UnturnedLog.warn("[TempSteamworksWorkshop] Android: Bypassing UGC query for server items, launching level...");
+			OnFinishedDownloadingItems();
+			return;
+#endif
+
 			serverItemsQueryHandle = SteamUGC.CreateQueryUGCDetailsRequest(fileIDs.ToArray(), (uint) fileIDs.Count);
 			SteamUGC.SetReturnKeyValueTags(serverItemsQueryHandle, true);
 			SteamUGC.SetAllowCachedResponse(serverItemsQueryHandle, 60);
 			SteamAPICall_t callHandle = SteamUGC.SendQueryUGCRequest(serverItemsQueryHandle);
+			if (callHandle == SteamAPICall_t.Invalid)
+			{
+				UnturnedLog.warn("[TempSteamworksWorkshop] SendQueryUGCRequest returned Invalid. Proceeding to launch...");
+				OnFinishedDownloadingItems();
+				return;
+			}
 			serverItemsQueryCompleted.Set(callHandle);
 		}
 
