@@ -410,7 +410,7 @@ namespace SDG.Unturned
 			active = false;
 			if (joinButton != null)
 			{
-				joinButton.isClickable = true;
+				joinButton.IsClickable = true;
 			}
 
 			container.AnimateOutOfView(0, 1);
@@ -424,7 +424,7 @@ namespace SDG.Unturned
 			}
 			if (joinButton != null)
 			{
-				joinButton.isClickable = false;
+				joinButton.IsClickable = false;
 			}
 			Provider.UpdateClientSteamCredentials();
 			IPv4Address ipv4Address = new IPv4Address(serverInfo.ip);
@@ -1424,7 +1424,7 @@ namespace SDG.Unturned
 			active = false;
 			if (joinButton != null)
 			{
-				joinButton.isClickable = true;
+				joinButton.IsClickable = true;
 			}
 
 			infoContainer = Glazier.Get().CreateFrame();
