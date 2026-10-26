@@ -1731,11 +1731,16 @@ namespace SDG.Unturned
 			}
 
 			connectionStartTime = Time.realtimeSinceStartup;
+			if (!parameters.steamId.IsValid() && advertisement != null && advertisement.steamID.IsValid())
+			{
+				parameters.steamId = advertisement.steamID;
+			}
 			string srvIpStr = parameters.address.IsZero ? "N/A" : parameters.address.ToString();
 			string srvCodeStr = parameters.steamId.IsValid() ? parameters.steamId.ToString() : "N/A";
+			string advCodeStr = (advertisement != null && advertisement.steamID.IsValid()) ? advertisement.steamID.ToString() : "N/A";
 			UnturnedLog.info("================================================================================");
 			UnturnedLog.info("[CONN-STAGE-1/6] STARTING SERVER CONNECTION");
-			UnturnedLog.info($"[CONN-STAGE-1/6] Target Server: IP={srvIpStr}, GamePort={parameters.connectionPort}, QueryPort={parameters.queryPort}, SteamID={srvCodeStr}");
+			UnturnedLog.info($"[CONN-STAGE-1/6] Target Server: IP={srvIpStr}, GamePort={parameters.connectionPort}, QueryPort={parameters.queryPort}, SteamID={srvCodeStr}, AdvSteamID={advCodeStr}");
 			UnturnedLog.info($"[CONN-STAGE-1/6] Password: {(string.IsNullOrEmpty(parameters.password) ? "<empty>" : "<set (" + parameters.password.Length + " chars)>")}");
 			if (advertisement != null)
 			{

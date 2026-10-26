@@ -3648,8 +3648,12 @@ namespace Steamworks {
                 return _configuredSteamId;
             }
             set {
+                bool changed = (_configuredSteamId != value);
                 _configuredSteamId = value;
                 SteamShimLogger.Info($"[SteamUser] Updated ConfiguredSteamID to: {value}");
+                if (changed && value != 0 && value != 76561198000000000UL) {
+                    NativeGameNetworkingSockets.Reinitialize(value);
+                }
             }
         }
 

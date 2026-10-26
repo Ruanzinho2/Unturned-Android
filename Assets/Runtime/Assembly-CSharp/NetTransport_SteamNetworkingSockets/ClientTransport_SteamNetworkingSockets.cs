@@ -315,6 +315,14 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 		private void Connect()
 		{
 			connectStartTime = UnityEngine.Time.realtimeSinceStartup;
+
+			ulong mySteamId = Steamworks.SteamUser.GetSteamID().m_SteamID;
+			NativeGameNetworkingSockets.EnsureLocalIdentity(mySteamId);
+			if (Steamworks.SteamNetworkingSockets.GetIdentity(out SteamNetworkingIdentity localIdent))
+			{
+				Log("[CONN-STAGE-2/6] Verified Local GNS Identity: {0} (SteamID: {1})", IdentityToString(localIdent), localIdent.GetSteamID64());
+			}
+
 			List<SteamNetworkingConfigValue_t> configList = BuildDefaultConfig();
 			SteamNetworkingConfigValue_t[] configArray = configList.ToArray();
 
