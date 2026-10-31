@@ -282,6 +282,9 @@ namespace Steamworks {
                     interfacePtr = IntPtr.Zero;
                     interfaceUtilsPtr = IntPtr.Zero;
                 }
+                if (newSteamId != 0 && newSteamId != 76561198000000000UL) {
+                    SteamUser.ConfiguredSteamID = newSteamId;
+                }
                 EnsureInitialized();
             } catch (Exception ex) {
                 SteamShimLogger.Error($"[SteamNetworkingSockets] Reinitialize exception: {ex}");
@@ -511,7 +514,12 @@ namespace Steamworks {
                         address.Clear();
                     }
                     address.ToString(out string ipStr, true);
+                    ulong expectedId = SteamUser.GetSteamID().m_SteamID;
+                    EnsureLocalIdentity(expectedId);
                     EnsureNetworkingCertificate(304930);
+                    if (GetIdentity(out SteamNetworkingIdentity localId)) {
+                        SteamShimLogger.Info($"[SteamNetworkingSockets] ConnectByIPAddress Local Identity: type={localId.m_eType}, steamId={localId.GetSteamID64()} (expected: {expectedId})");
+                    }
                     SteamShimLogger.Info($"[SteamNetworkingSockets] ConnectByIPAddress initiating connection to {ipStr}...");
 
                     var optList = pOptions != null ? new System.Collections.Generic.List<SteamNetworkingConfigValue_t>(pOptions) : new System.Collections.Generic.List<SteamNetworkingConfigValue_t>();

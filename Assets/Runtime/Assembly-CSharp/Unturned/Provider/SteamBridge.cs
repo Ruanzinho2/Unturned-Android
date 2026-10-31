@@ -93,6 +93,8 @@ namespace SDG.Unturned
             }
         }
 
+        private static volatile bool sIsLoggedOnLocal = false;
+
 #if UNITY_ANDROID && !UNITY_EDITOR
         private class JavaSteamLoginCallbackProxy : AndroidJavaProxy
         {
@@ -135,6 +137,7 @@ namespace SDG.Unturned
 
             public void onLoginSuccess(long steamId, string accountName, string refreshToken)
             {
+                sIsLoggedOnLocal = true;
                 EnqueueMainThread(() =>
                 {
                     ulong uSteamId = (ulong)steamId;
@@ -147,25 +150,29 @@ namespace SDG.Unturned
                     SteamUser.ConfiguredSteamID = uSteamId;
                     SteamFriends.ConfiguredPersonaName = accountName;
                     Provider.UpdateClientSteamCredentials();
+                    sIsLoggedOnLocal = true;
 
                     UnturnedLog.info($"[SteamBridge] Successfully logged on via JavaSteam! SteamID: {uSteamId}, Account: {accountName}");
-                    System.Threading.ThreadPool.QueueUserWorkItem(_ =>
+
+                    try
                     {
-                        try
-                        {
-                            Steamworks.SteamNetworkingSockets.EnsureNetworkingCertificate(304930);
-                        }
-                        catch (Exception certEx)
-                        {
-                            UnturnedLog.warn($"[SteamBridge] Background EnsureNetworkingCertificate note: {certEx.Message}");
-                        }
-                    });
+                        Steamworks.NativeGameNetworkingSockets.EnsureLocalIdentity(uSteamId);
+                        Steamworks.SteamNetworkingSockets.EnsureAppID(304930);
+                        bool certReady = Steamworks.SteamNetworkingSockets.EnsureNetworkingCertificate(304930);
+                        UnturnedLog.info($"[SteamBridge] Main thread EnsureNetworkingCertificate result: {certReady}");
+                    }
+                    catch (Exception certEx)
+                    {
+                        UnturnedLog.warn($"[SteamBridge] EnsureNetworkingCertificate note: {certEx.Message}");
+                    }
+
                     callbackLoginSuccess?.Invoke(uSteamId, accountName);
                 });
             }
 
             public void onLoginFailed(string error)
             {
+                sIsLoggedOnLocal = false;
                 EnqueueMainThread(() =>
                 {
                     UnturnedLog.warn($"[SteamBridge] Login failed: {error}");
@@ -312,12 +319,15 @@ namespace SDG.Unturned
         {
             get
             {
+                if (sIsLoggedOnLocal) return true;
 #if UNITY_ANDROID && !UNITY_EDITOR
                 try
                 {
                     using (AndroidJavaClass bridgeClass = new AndroidJavaClass("com.smartlydressedgames.unturned.SteamBridge"))
                     {
-                        return bridgeClass.CallStatic<bool>("isLoggedOn");
+                        bool logged = bridgeClass.CallStatic<bool>("isLoggedOn");
+                        if (logged) sIsLoggedOnLocal = true;
+                        return logged;
                     }
                 }
                 catch
@@ -377,6 +387,7 @@ namespace SDG.Unturned
 
         public static void LogOff()
         {
+            sIsLoggedOnLocal = false;
             PlayerPrefs.DeleteKey("SteamRefreshToken");
             PlayerPrefs.Save();
 #if UNITY_ANDROID && !UNITY_EDITOR

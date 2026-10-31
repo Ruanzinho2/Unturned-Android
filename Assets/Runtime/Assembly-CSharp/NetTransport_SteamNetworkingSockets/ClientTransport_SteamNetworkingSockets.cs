@@ -344,7 +344,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 				else
 				{
 					address.SetIPv4(ipv4, Unturned.Provider.CurrentServerConnectParameters.connectionPort);
-					Log("[CONN-STAGE-2/6] Client connecting to {0} (IP: {1} Port: {2})", AddressToString(address), Unturned.Provider.CurrentServerConnectParameters.address, Unturned.Provider.CurrentServerConnectParameters.connectionPort);
+					Log("[CONN-STAGE-2/6] Client connecting to {0} (IP: {1} Port: {2}, Target SteamID: {3})", AddressToString(address), Unturned.Provider.CurrentServerConnectParameters.address, Unturned.Provider.CurrentServerConnectParameters.connectionPort, Unturned.Provider.CurrentServerConnectParameters.steamId);
 				}
 
 				connection = Steamworks.SteamNetworkingSockets.ConnectByIPAddress(ref address, configArray.Length, configArray);
@@ -423,6 +423,35 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 			isConnected = true;
 			float elapsed = UnityEngine.Time.realtimeSinceStartup - connectStartTime;
 			Log("[CONN-STAGE-4/6] [SUCCESS] Connection established! GNS state=Connected, Conn={0}, Elapsed={1:F2}s", connection, elapsed);
+			Log("[CONN-STAGE-4/6] Connection Peer Info: Remote={0} (SteamID={1}, Type={2}), Desc='{3}', Flags=0x{4:X8}",
+				IdentityToString(callback.m_info.m_identityRemote),
+				callback.m_info.m_identityRemote.GetSteamID64(),
+				callback.m_info.m_identityRemote.m_eType,
+				callback.m_info.m_szConnectionDescription,
+				callback.m_info.m_nFlags);
+
+			try
+			{
+				ESteamNetworkingAvailability authAvail = Steamworks.SteamNetworkingSockets.GetAuthenticationStatus(out SteamNetAuthenticationStatus_t authStatus);
+				Log("[CONN-STAGE-4/6] Client Authentication Status: {0} (Debug: '{1}')", authAvail, authStatus.m_debugMsg);
+			}
+			catch (Exception ex)
+			{
+				Log("[CONN-STAGE-4/6] Note querying auth status: {0}", ex.Message);
+			}
+
+			try
+			{
+				if (Steamworks.SteamNetworkingSockets.GetDetailedConnectionStatus(connection, out string detailedStatus, 4096) >= 0 && !string.IsNullOrEmpty(detailedStatus))
+				{
+					Log("[CONN-STAGE-4/6] Detailed Connection Status:\n{0}", detailedStatus.TrimEnd());
+				}
+			}
+			catch (Exception ex)
+			{
+				Log("[CONN-STAGE-4/6] Note querying detailed status: {0}", ex.Message);
+			}
+
 			connectedCallback();
 			connectedCallback = null; // Prevent accidentally calling it multiple times.
 		}
