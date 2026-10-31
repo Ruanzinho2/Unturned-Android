@@ -258,13 +258,6 @@ namespace Steamworks {
         public static string ConfiguredPersonaName {
             get {
                 if (string.IsNullOrEmpty(_configuredPersonaName) || _configuredPersonaName == "Survivor") {
-                    try {
-                        string savedName = UnityEngine.PlayerPrefs.GetString("SteamPersonaName", "");
-                        if (!string.IsNullOrEmpty(savedName)) {
-                            _configuredPersonaName = savedName;
-                            return _configuredPersonaName;
-                        }
-                    } catch {}
                     if (CustomPersonaNameProvider != null) {
                         try {
                             string customName = CustomPersonaNameProvider();
@@ -3672,13 +3665,6 @@ namespace Steamworks {
                             }
                         } catch {}
                     }
-                    try {
-                        string savedId = UnityEngine.PlayerPrefs.GetString("SteamID64", "");
-                        if (ulong.TryParse(savedId, out ulong parsedId) && parsedId > 0) {
-                            _configuredSteamId = parsedId;
-                            return _configuredSteamId;
-                        }
-                    } catch {}
                     try {
                         IntPtr pUser = SteamAPI_SteamUser_v023();
                         if (pUser != IntPtr.Zero) {

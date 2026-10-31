@@ -11,6 +11,7 @@ namespace SDG.Unturned
         private static readonly ConcurrentQueue<System.Action> mainThreadQueue = new ConcurrentQueue<System.Action>();
         private static bool isInitialized = false;
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         public static void EnsureInitialized()
         {
             if (isInitialized) return;
@@ -18,8 +19,19 @@ namespace SDG.Unturned
 
             // Wire up SteamworksShim hooks to SteamBridge
             SteamUser.LoggedOnCheck = () => IsLoggedOn;
-            SteamUser.CustomSteamIdProvider = () => SteamId;
-            SteamFriends.CustomPersonaNameProvider = () => AccountName;
+            SteamUser.CustomSteamIdProvider = () => {
+                ulong sid = SteamId;
+                if (sid != 0) return sid;
+                if (ulong.TryParse(PlayerPrefs.GetString("SteamID64", ""), out ulong savedId) && savedId != 0) return savedId;
+                return 0;
+            };
+            SteamFriends.CustomPersonaNameProvider = () => {
+                string name = AccountName;
+                if (!string.IsNullOrEmpty(name)) return name;
+                string savedName = PlayerPrefs.GetString("SteamPersonaName", "");
+                if (!string.IsNullOrEmpty(savedName)) return savedName;
+                return null;
+            };
             SteamUser.CustomAuthTicketProvider = (appId) => GetAuthSessionTicket(appId);
             NativeGameNetworkingSockets.CustomCertificateProvider = (appId, pubKey) => RequestNetworkingCertificate(appId, pubKey);
 
