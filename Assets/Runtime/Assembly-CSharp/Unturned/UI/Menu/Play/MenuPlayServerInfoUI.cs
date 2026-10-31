@@ -370,6 +370,10 @@ namespace SDG.Unturned
 				joinButton.IsVisible = true;
 				joinDisabledBox.IsVisible = false;
 			}
+			if (joinButton != null)
+			{
+				joinButton.IsClickable = true;
+			}
 
 			reset();
 
@@ -1422,10 +1426,6 @@ namespace SDG.Unturned
 			container.SizeScale_Y = 1;
 			MenuUI.container.AddChild(container);
 			active = false;
-			if (joinButton != null)
-			{
-				joinButton.IsClickable = true;
-			}
 
 			infoContainer = Glazier.Get().CreateFrame();
 			infoContainer.PositionOffset_Y = 94;

@@ -218,10 +218,10 @@ namespace Steamworks {
                                 SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 17 /* LogLevel_P2PRendezvous */, 5);
                                 SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 18 /* LogLevel_SDRRelayPings */, 5);
 
-                                // On Android without a desktop Steam client CA, IP_AllowWithoutAuth must be 2 (AllowLocalUnsignedCert)
-                                // to use self-signed local certs with our verified SteamID, preventing "Need a cert authority!" (5002) error.
-                                bool gCfg = SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 23 /* k_ESteamNetworkingConfig_IP_AllowWithoutAuth */, 2);
-                                SteamShimLogger.Info($"[SteamNetworkingSockets] SetGlobalConfigValueInt32 IP_AllowWithoutAuth=2 result: {gCfg}, log levels set to Msg (5)");
+                                // IP_AllowWithoutAuth = 1: Attempt authorization when connecting, and allow unauthorized peers as fallback.
+                                // This sends our genuine Valve-signed cert to the dedicated server so the server authenticates our SteamID.
+                                bool gCfg = SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 23 /* k_ESteamNetworkingConfig_IP_AllowWithoutAuth */, 1);
+                                SteamShimLogger.Info($"[SteamNetworkingSockets] SetGlobalConfigValueInt32 IP_AllowWithoutAuth=1 result: {gCfg}, log levels set to Msg (5)");
                             } catch (Exception cfgEx) {
                                 SteamShimLogger.Warn($"[SteamNetworkingSockets] Global config note: {cfgEx.Message}");
                             }
@@ -522,7 +522,7 @@ namespace Steamworks {
                         optList.Add(new SteamNetworkingConfigValue_t {
                             m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth,
                             m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
-                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 2 }
+                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 1 }
                         });
                     }
                     var actualOpts = optList.ToArray();

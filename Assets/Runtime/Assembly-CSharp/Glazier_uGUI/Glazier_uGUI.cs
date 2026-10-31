@@ -857,7 +857,7 @@ namespace SDG.Unturned
 		private Image tooltipShadowImage;
 
 		private GlazieruGUITooltip lastTooltip;
-		private float startedTooltip;
+		private float startedTooltip; // Force cache rebuild
 
 		private bool wasCursorVisible;
 		private bool wasCursorLocked;
