@@ -141,7 +141,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 			SteamNetworkingConfigValue_t allowWithoutAuth = new SteamNetworkingConfigValue_t();
 			allowWithoutAuth.m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32;
 			allowWithoutAuth.m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth;
-			allowWithoutAuth.m_val.m_int32 = 1; // 1 = Attempt authorization when connecting, allow unauthorized peers if fallback
+			allowWithoutAuth.m_val.m_int32 = 0; // 0 = Authentication strictly required (no anonymous/unauthenticated fallback)
 			configList.Add(allowWithoutAuth);
 
 			if (clSendBufferSize.hasValue && clSendBufferSize.value > 0)
@@ -180,7 +180,7 @@ namespace SDG.NetTransport.SteamNetworkingSockets
 		/// <summary>
 		/// Should certificate authentication be disabled for UDP connections?
 		/// </summary>
-		protected static CommandLineFlag clAllowWithoutAuth = new CommandLineFlag(true, "-SNS_AllowWithoutAuth");
+		protected static CommandLineFlag clAllowWithoutAuth = new CommandLineFlag(false, "-SNS_AllowWithoutAuth");
 
 		protected FSteamNetworkingSocketsDebugOutput GetDebugOutputFunction()
 		{

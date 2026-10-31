@@ -60,7 +60,7 @@ def main():
     parser.add_argument("--run-id", type=str, default="41199293748")
     parser.add_argument("--artifact-id", type=str, default=None)
     parser.add_argument("--name", type=str, default="Unturned-Android-APK")
-    parser.add_argument("--output", type=str, default="Build_APK/Unturned-Android-v75.apk")
+    parser.add_argument("--output", type=str, default="Build_APK/Unturned-Android-v76.apk")
     args = parser.parse_args()
 
     token = get_token()

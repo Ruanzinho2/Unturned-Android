@@ -1099,7 +1099,7 @@ namespace Steamworks {
             return HSteamListenSocket.Invalid;
         }
         public static HSteamNetConnection ConnectP2P(ref SteamNetworkingIdentity identityRemote, int nRemoteVirtualPort, int nOptions, SteamNetworkingConfigValue_t[] pOptions) {
-            return HSteamNetConnection.Invalid;
+            return NativeGameNetworkingSockets.ConnectP2P(ref identityRemote, nRemoteVirtualPort, nOptions, pOptions);
         }
         public static EResult AcceptConnection(HSteamNetConnection hConn) {
             return default;
@@ -2812,7 +2812,7 @@ namespace Steamworks {
             return HSteamListenSocket.Invalid;
         }
         public static HSteamNetConnection ConnectP2P(ref SteamNetworkingIdentity identityRemote, int nRemoteVirtualPort, int nOptions, SteamNetworkingConfigValue_t[] pOptions) {
-            return HSteamNetConnection.Invalid;
+            return NativeGameNetworkingSockets.ConnectP2P(ref identityRemote, nRemoteVirtualPort, nOptions, pOptions);
         }
         public static EResult AcceptConnection(HSteamNetConnection hConn) {
             return default;

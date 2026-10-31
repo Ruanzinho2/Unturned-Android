@@ -104,6 +104,9 @@ namespace Steamworks {
         private static extern HSteamNetConnection SteamAPI_ISteamNetworkingSockets_ConnectByIPAddress(IntPtr self, ref SteamNetworkingIPAddr address, int nOptions, SteamNetworkingConfigValue_t[] pOptions);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern HSteamNetConnection SteamAPI_ISteamNetworkingSockets_ConnectP2P(IntPtr self, ref SteamNetworkingIdentity identityRemote, int nRemoteVirtualPort, int nOptions, SteamNetworkingConfigValue_t[] pOptions);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern bool SteamAPI_ISteamNetworkingSockets_CloseConnection(IntPtr self, HSteamNetConnection hPeer, int nReason, string pszDebug, bool bEnableLinger);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
@@ -222,10 +225,9 @@ namespace Steamworks {
                                 SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 17 /* LogLevel_P2PRendezvous */, 5);
                                 SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 18 /* LogLevel_SDRRelayPings */, 5);
 
-                                // IP_AllowWithoutAuth = 1: Attempt authorization when connecting, and allow unauthorized peers as fallback.
-                                // This sends our genuine Valve-signed cert to the dedicated server so the server authenticates our SteamID.
-                                bool gCfg = SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 23 /* k_ESteamNetworkingConfig_IP_AllowWithoutAuth */, 1);
-                                SteamShimLogger.Info($"[SteamNetworkingSockets] SetGlobalConfigValueInt32 IP_AllowWithoutAuth=1 result: {gCfg}, log levels set to Msg (5)");
+                                // IP_AllowWithoutAuth = 0: Enforce strict cryptographic authentication. Do not allow unauthorized peers or fallback to anonymous identity.
+                                bool gCfg = SteamAPI_ISteamNetworkingUtils_SetGlobalConfigValueInt32(interfaceUtilsPtr, 23 /* k_ESteamNetworkingConfig_IP_AllowWithoutAuth */, 0);
+                                SteamShimLogger.Info($"[SteamNetworkingSockets] SetGlobalConfigValueInt32 IP_AllowWithoutAuth=0 result: {gCfg}, log levels set to Msg (5)");
                             } catch (Exception cfgEx) {
                                 SteamShimLogger.Warn($"[SteamNetworkingSockets] Global config note: {cfgEx.Message}");
                             }
@@ -565,6 +567,7 @@ namespace Steamworks {
         public static ESteamNetworkingAvailability InitAuthentication() {
             if (EnsureInitialized() && interfacePtr != IntPtr.Zero) {
                 try {
+                    EnsureNetworkingCertificate(304930);
                     return SteamAPI_ISteamNetworkingSockets_InitAuthentication(interfacePtr);
                 } catch (Exception ex) {
                     SteamShimLogger.Warn($"[SteamNetworkingSockets] InitAuthentication note: {ex.Message}");
@@ -604,13 +607,13 @@ namespace Steamworks {
                     // Remove any global-only options (such as PacketTraceMaxBytes) that fail per-connection validation
                     optList.RemoveAll(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_PacketTraceMaxBytes);
 
-                    if (!optList.Exists(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth)) {
-                        optList.Add(new SteamNetworkingConfigValue_t {
-                            m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth,
-                            m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
-                            m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 1 }
-                        });
-                    }
+                    // IP_AllowWithoutAuth = 0: Strictly require authentication; prevent fallback to anonymous SteamID which causes STEAM_ID_MISMATCH (rejection 49)
+                    optList.RemoveAll(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth);
+                    optList.Add(new SteamNetworkingConfigValue_t {
+                        m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth,
+                        m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
+                        m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 0 }
+                    });
                     var actualOpts = optList.ToArray();
 
                     HSteamNetConnection conn = SteamAPI_ISteamNetworkingSockets_ConnectByIPAddress(interfacePtr, ref address, actualOpts.Length, actualOpts);
@@ -618,6 +621,40 @@ namespace Steamworks {
                     return conn;
                 } catch (Exception ex) {
                     SteamShimLogger.Error($"[SteamNetworkingSockets] ConnectByIPAddress exception: {ex}");
+                }
+            }
+            return HSteamNetConnection.Invalid;
+        }
+
+        public static HSteamNetConnection ConnectP2P(ref SteamNetworkingIdentity identityRemote, int nRemoteVirtualPort, int nOptions, SteamNetworkingConfigValue_t[] pOptions) {
+            if (EnsureInitialized() && interfacePtr != IntPtr.Zero) {
+                try {
+                    ulong expectedId = SteamUser.GetSteamID().m_SteamID;
+                    EnsureLocalIdentity(expectedId);
+                    EnsureNetworkingCertificate(304930);
+                    if (GetIdentity(out SteamNetworkingIdentity localId)) {
+                        SteamShimLogger.Info($"[SteamNetworkingSockets] ConnectP2P Local Identity: type={localId.m_eType}, steamId={localId.GetSteamID64()} (expected: {expectedId})");
+                    }
+                    SteamShimLogger.Info($"[SteamNetworkingSockets] ConnectP2P initiating connection to remote SteamID={identityRemote.GetSteamID64()} (vport={nRemoteVirtualPort})...");
+
+                    var optList = pOptions != null ? new System.Collections.Generic.List<SteamNetworkingConfigValue_t>(pOptions) : new System.Collections.Generic.List<SteamNetworkingConfigValue_t>();
+                    // Remove any global-only options (such as PacketTraceMaxBytes) that fail per-connection validation
+                    optList.RemoveAll(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_PacketTraceMaxBytes);
+
+                    // IP_AllowWithoutAuth = 0: Strictly require authentication; prevent fallback to anonymous SteamID which causes STEAM_ID_MISMATCH (rejection 49)
+                    optList.RemoveAll(o => o.m_eValue == ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth);
+                    optList.Add(new SteamNetworkingConfigValue_t {
+                        m_eValue = ESteamNetworkingConfigValue.k_ESteamNetworkingConfig_IP_AllowWithoutAuth,
+                        m_eDataType = ESteamNetworkingConfigDataType.k_ESteamNetworkingConfig_Int32,
+                        m_val = new SteamNetworkingConfigValue_t.OptionValue { m_int32 = 0 }
+                    });
+                    var actualOpts = optList.ToArray();
+
+                    HSteamNetConnection conn = SteamAPI_ISteamNetworkingSockets_ConnectP2P(interfacePtr, ref identityRemote, nRemoteVirtualPort, actualOpts.Length, actualOpts);
+                    SteamShimLogger.Info($"[SteamNetworkingSockets] ConnectP2P returned connection handle: {conn.m_HSteamNetConnection}");
+                    return conn;
+                } catch (Exception ex) {
+                    SteamShimLogger.Error($"[SteamNetworkingSockets] ConnectP2P exception: {ex}");
                 }
             }
             return HSteamNetConnection.Invalid;
