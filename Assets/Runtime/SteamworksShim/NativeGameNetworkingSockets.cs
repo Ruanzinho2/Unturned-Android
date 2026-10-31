@@ -21,6 +21,7 @@ namespace Steamworks {
         private static IntPtr interfacePtr = IntPtr.Zero;
         private static IntPtr interfaceUtilsPtr = IntPtr.Zero;
         private static bool hasValveSignedCert = false;
+        private static bool trustedRootCAsInstalled = false;
 
         public delegate byte[] CustomNetworkingCertificateProviderDelegate(uint appId, byte[] publicKey);
         public static CustomNetworkingCertificateProviderDelegate CustomCertificateProvider = null;
@@ -68,6 +69,9 @@ namespace Steamworks {
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern bool SteamAPI_ISteamNetworkingSockets_SetCertificate(IntPtr self, byte[] pCertificate, int cbCertificate, StringBuilder errMsg);
+
+        [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern bool SteamAPI_ISteamNetworkingSockets_AddTrustedRootCA(IntPtr self, string pszKey, StringBuilder errMsg);
 
         [DllImport(LibName, CallingConvention = CallingConvention.Cdecl)]
         private static extern IntPtr SteamAPI_SteamNetworkingSockets_v009();
@@ -248,6 +252,7 @@ namespace Steamworks {
                         }
 
                         SteamShimLogger.Info($"[SteamNetworkingSockets] Initialized successfully. interfacePtr={interfacePtr} utilsPtr={interfaceUtilsPtr}");
+                        EnsureTrustedRootCAs();
                         if (SteamUser.BLoggedOn()) {
                             EnsureNetworkingCertificate(304930);
                         }
@@ -279,6 +284,7 @@ namespace Steamworks {
                     isInitialized = false;
                     isAvailable = false;
                     hasValveSignedCert = false;
+                    trustedRootCAsInstalled = false;
                     interfacePtr = IntPtr.Zero;
                     interfaceUtilsPtr = IntPtr.Zero;
                 }
@@ -325,9 +331,77 @@ namespace Steamworks {
             }
         }
 
+        private static readonly string[] ValveRootCACertificates = new string[] {
+            "Ii4IARIgSJbwDpn/07/GHiGMKio0Vh18VN3D/hKzQGh6n0Yx9qpF6fLfak3p9at9KT6tfJIvitz8MkDZrsE/NVxl0eoEuTVZ72bCyYd7GSNgStdROJkzgt5SjoGMgxjdkZBjuYTw9fbD+x+mzzA+ilPYEXk2XNjFyj8D",
+            "Ii4IARIgmuygThdRzmJo1WkALKHh+hstvCbTa06joAg603KCm4RF6fLfak3p9at9KT6tfJIvitz8MkCxnMbUaj1AXHqWTAtEMMttjkG/6UIT4NDVpYhW+w0usRQFvP3wtQ1qtCodTWYBwrTTFmcMJMqtFTEoakp2lcsJ",
+            "Ij4IARIgpdtY6tZuJOfB3FHhsMDlJWo6EFDmRXVNMgEkptCg+YpF6vLfak3qWaJuUJrVEFCO0iNQ+pQ+UIy8TSk+rXySL4rc/DJAbDCKfD9SOBRTcV+QuebKqHo8TtgEOgXxB84b3ILrklThrm9Mhr2qtfa+eR4VrNIpRga5byOnE8rosFMdu/v0BA==",
+            "IjIIARIgCXkgLFarXpHydo8Rkn7V662Ab+ndxPq6NlzEzrN+H+tF6vLfak3qWaJuUICsESk+rXySL4rc/DJAS3bROFd9MfPg//Q7PhrhtWXLrn1wbfQQh9TBLrXxFO6kmQakIZBoOgnC98gKlS0BqxwZa6A8yRWCo0Yu30wiAQ==",
+            "IjIIARIgOvk0Xp/JOKg3+dJKrWpMrnjH9rWWTi9Evq3srROsjbxF6vLfak3qWaJuUICsESk+rXySL4rc/DJAWVOMH53bGAc7Ln/Y3HU3cQ2SLG3HAFqfUBFuKO5sdL0HJLMQVYfmx0PL7DF+99h8QkfJPxbUr260x1ZhxPT+BQ==",
+            "IjIIARIgQUoxHO4Sbn+7AsTGgtZ8J+dKW6pFwFhUKvU6Trq6AJFF6vLfak3qWaJuUPbHRyk+rXySL4rc/DJAB07M2CDF0kT/VR26uqGLM0C/NGO8MXV1dM7dfPyHpAtL7LILSrAGjxut0ZppfUpONNzfD0q3WM36V+5zXXTwAw==",
+            "IjIIARIgZ8afoPHQ1SJkbDTSbbaz9J7t6WpG2HYOmpw1d1Q49r1F6vLfak3qWaJuUP6JcSk+rXySL4rc/DJAllt1Tq9of5ZD8hUuxddbiAGCVJLiAuxCwHx1dx4gx+8COo5F9zXNejQoZ9duYOdIOQYf2pzHFjqCDwfd2B7gBQ==",
+            "IjIIARIgbQrsJLXGcVefebGt+C8PI+LV7KD9bCGsbotu1YvhgwVF6vLfak3qWaJuUPbHRyk+rXySL4rc/DJAxTe9cgreWBthFCxXAdAq/telZr0Qx+SHDto049sHQ6CkHB7/+kYyje1ukGf0rh2VFbcNJhn3v3T3suY7yICfDQ==",
+            "IjIIARIgbcqFwE6OBNLPespNB9D6gAZ6T1JWxBX03eiwVJBA9hdF6vLfak3qWaJuUPbHRyk+rXySL4rc/DJAtlP8v6KXExwfs89NVWJRHRelzEdmWyW3LlUmdobdhEi74qP87G3+I4DoGBYBNoS7l3KUuSch3HRNQDbZwOykDQ==",
+            "IjIIARIgmu5Nv72Qm74PVBQ58hay4v13bw1B2qvq4mTP71HW9WpF6vLfak3qWaJuUPi6WSk+rXySL4rc/DJAMBF4R6RQFlTvj34aPoNXvHTHd+sKrG0MElMV4dSJVchlIm13f8bUgv5RCVkOztSlBuHCSfPbgi5gQ2WxMIbBBg==",
+            "IjIIARIgo8xjxfGYHv0LfOsSTcywSSree/xaQqB8AAdatIKnNuhF6vLfak3qWaJuUJTedSk+rXySL4rc/DJADbXadOIf+GljTveWZKPqGEbQY64lQe2z/UiUPPmsDLbuWTREmyes32VnRetLfFp+ObTW4jMV2BqrNwk2SNzABg==",
+            "IjIIARIgpPJHtQVj8i8katUqP+SUJg9ii7nf00CWUrvoxrvqwa9F6vLfak3qWaJuUNiiQSk+rXySL4rc/DJAQeQePNXFvyW94R8VDz1yxnD98DxBkMTnaKlC31VDZ1LSRdqnq3zZSb4OCfUFbmFu7uOKkUM3A0gg4NNPf0YOAQ==",
+            "IjIIARIgqRRbODhmNhl/jHaVnHb/9myxt84TD3GD3KjVe6pLpDRF6vLfak3qWaJuUJK0cik+rXySL4rc/DJAsUW8M16Z6nhMNnjWr1LFMeqG+y/XgF9l7vn9qNlc0JE8lgVqCIhelMP5QOTXaHyWHkeIQi46qtHvQPw/Q+niAA==",
+            "IjMIARIg80iF8RBZg0jnEN6I3NiWbNXup1MvMBidYjwJVPyAPLtF6vLfak3qWaJuUM7AkQEpPq18ki+K3PwyQJVV5w2WchsAXDv2vIAwaLgX0N20ZmbrO6DKlhTrN9sRQKiqH7hS+0Q5+zGoTv/A6OWuChy9dY7cSzvZ8MFx7w8=",
+            "IjMIARIgFP9yak4w+jgCDBbjGFeU8oRFI+G8OWGliDO0wVxrpwxF6vLfak3qWaJuULbRwgIpPq18ki+K3PwyQDokGp6l2thxKG47kfZVADqn2IdK9vNgIsjixHyS2bfuiYovPBvBwreni3UOMOBhaxS1CQzy1KsrDMca7iNFlQg=",
+            "IjMIARIgFuS2j9q4cnG1eHFSW8Gci1kGCMzKZ/LL3O7zz5+U2FdF6vLfak3qWaJuUOb49wEpPq18ki+K3PwyQE0xn4Zm1LLggzDajlYx3BakTfX2VfW1SstdAq9Q3c94HeXgey40o/QTabZUoDvxiiiPBXzYJZZsmu9mXKlikww=",
+            "IjMIARIgMDTWOBwBKK6HG/vjBBNfBSZx7ZnH69k5t/imAS7A/GZF6vLfak3qWaJuULDd6AEpPq18ki+K3PwyQL1ZQonSW84PIIsDxwojkuHKKhmp2umaZn6Evj2v1pLekXcHotsxsQrJwsjzyksGgZN7TTa7VjaxVB22zWi9AA4=",
+            "IjMIARIgPy905SuobryVubUHOcWDvgbZiQvkt2q4X8a0l/pK01hF6vLfak3qWaJuUPS91gEpPq18ki+K3PwyQLrcLsCx13682tL+dDbThiAWqBETQyv+oa7GgFX2zauZOGLb94DuiDnH1VoM+9KLNmVoykI0PhqXRgQ42MWEPwo=",
+            "IjMIARIgYt+q0NM81evo81wuCdv4Xr+Lvmqjg3or5pwbeKvnqVJF6vLfak3qWaJuUOKdvgEpPq18ki+K3PwyQMjWQst+IodcmUtk3Oe25xxJpJpit2M3AaaV8nh1UsSoCoCLx9Q01IwKooFt+boTuEPk7gZGMirA/C3K7YJ/SAY=",
+            "IjMIARIgaByRvuB84Jr3T7QNyFT/G/0xmsndKSc6I7Ksp3wSU/JF6vLfak3qWaJuUJzaigEpPq18ki+K3PwyQCkLos0scg0UzH03A7j2AO405ENjat9gHk2UJlRI4Vzu+vbq90O/cdtvtlW3B6aFFuFAFc5JtAxZFFFF79q1dww=",
+            "IjMIARIgjqKuiWU1m88lCRYjbHbpVFX1txwHUrTFFbrtNcuJFyNF6vLfak3qWaJuUKrE2AEpPq18ki+K3PwyQAshwpItfTqFVWT5iZZ9es1ycSw82sYe+Vkai4kLOF8Z+54ZOdLinrfyehoy8TSaNBWBKV2ImPppZ6d8ccxZ5Q4=",
+            "IjMIARIgjvmzhZM/7rEuz0Xf4kej6l83AyVeRelJRMUt8wGo8oRF6vLfak3qWaJuUIachwEpPq18ki+K3PwyQAyvh50cNsa+3gUo0mIOF6D86ztyV0zhAjv3r4CbtwOuGamPfKXSZypeHuie4ft1/6Oqmq8ohzhmY5g6+EVHJQ4=",
+            "IjMIARIgsgr6La9ki5fLbw8wZU2tdnvhqThmmRK3RgpZvhsLdW5F6vLfak3qWaJuUMiPuwEpPq18ki+K3PwyQIYKcQKK+0PxRNM9CFjk6b98mb6jG54/7y2UqE6ICj5cLN0fhHUwuRGCc5oekeLolg+edc3jzvkDQCQNfcuhDgs=",
+            "IjMIARIgspqlc1x7gEdCkENc5knGJkzBzleqB65WrYi+onCYIyJF6vLfak3qWaJuUJbUgwIpPq18ki+K3PwyQLCc32Hgqf1Mw9LKRVIS5xDM67Cu9uc57VFOAaX2kilTPl0GP7kaecOzS8S1v9I+Zv04k6S45WkP3QQ8OmKE8gE=",
+            "IjMIARIguWbwz66bn2wstN2G5VqZk9fvaJO3tjVlugOfXvv/rIBF6vLfak3qWaJuUMri6QEpPq18ki+K3PwyQL+nnaTsmypuROMzH+sH31hX8o9/sQVRGd4b3tptIlcdQYIlugEDvJMewqQjfvOL2EWUli6lN9J+1bDmMx8KkAE=",
+            "IjYIARIg++XfexpF6c9GsYI97ywrpHyPZHvM5KeaY5k/c1NGgkpF6vLfak3qWaJuUKSZFVDcoUIpPq18ki+K3PwyQP9J7c51bvDLkp4wdeemt6jD1z4tsgMdRt9xleG/ObN8Eu1SM1ZRkiObJD0SsdYISLCFnTa8I1E/Y6jogi6Rdgs=",
+            "IjYIARIgGekPLsQIN1v2tQMkBDUvDTZEWLgupOPUejPUjH2k9JtF6vLfak3qWaJuUPbHR1DsqmgpPq18ki+K3PwyQIc3ZqfzBMSNf/50itRjXLquxn7PmEM16Bg+0/ej6Dqp0TTDog9th82fmyXp8gyhJFfO3BE353BvqfAlmHq7dAo=",
+            "IjYIARIgW0/njCUOhyUxNFu2OH4blGOOymFUKvVUuitYBC2WL7VF6vLfak3qWaJuUJrWE1CK+BQpPq18ki+K3PwyQFvrrmO1VYsetWPqKSSzeKvn04nCmwcGzObLBluFIQdS6Fs9lYlMXrAcREXu/e1vw6nUJgXLdxGC1fdKfbarsQM=",
+            "IjYIARIgXGZn3LJaYaLSiDnoQYGkHWpnY+M0Q00fHh9ni6+NLcBF6vLfak3qWaJuUKSZFVDcoUIpPq18ki+K3PwyQM/YL9GUHOfBHWNOEzIT56qYB16PsncXJYh6QfTyHrE+1TEiArIHKVAjRrD5vH3BuepYWeQW8ZlOKbPCz3nWvgE=",
+            "IjoIARIg8+9JL2vE+dNmhBPauZ/QZg7uQfZxiNCseZkk4XzGPlJF6vLfak3qWaJuUKLCPlCS8z9Qmr5DKT6tfJIvitz8MkDOWauRgdT5hw1LTqe/oQAqzgPFY02e3cSMa2h+iQtn91uU8+N09J2rYndb/2vQ8Ul4/oFCqCcXnSmxnnwoCKsP",
+            "IjsIARIgeRDuFHa02m4l6xEIdUXY2jNxMKAPNn++rjUXeGxctqlF6vLfak3qWaJuUMYFUNAFUNoFUJixECk+rXySL4rc/DJADG2d0iwK8b+NBxBvhSXq1dhyOAyMNajJULrmCFHigxQzG1iL+Ofek0KMHzPff9+1dXVicaYweM0OLZIepbgoBA==",
+            "IjwIARIgIlvA41Mpb2Ja+PfJVrFEYx90ECXf55F5FxI1Pk79iY5F6vLfak3qWaJuULgDUIgEUKoGUNyGiQIpPq18ki+K3PwyQBOj/C4TmzMiW5vtKRHb/DXLdcVGIPucVFbQmQUKhoI/KOzXgn39XrUSZQpRSxqvItgQffpsYC9E1MqmtfhwhAc=",
+            "IjwIARIgiIPS+pCa8KK7WWSyvqzy90FXzxy2vMAucaDKr3QU72FF6vLfak3qWaJuUOj7cVDKyaUCUPrguwIpPq18ki+K3PwyQNjRF2y2WGNfREdBMOtzPEvRH3QchYkxImR4sJhswa82aFGOOQFb+ErUARhX+ZRxDbnMpiApg9I1ipg/q5DXnQM=",
+            "Ik0IARIg1Dgd2R8FszAqcaMuEmzMoli/lZC8dEqopsWXmQRE8dlF6vLfak3qWaJuULoEULAGUICKD1DexwxQosI+UJLzP1CavkNQ9tmMASk+rXySL4rc/DJAydsgE0WAULK/UBhf/F+9AOJdrAbLwQz3V/d5ORFrh+Hnx6O3BtJpH/khAU4bhlYzhFCGJJ4wB0Zw6iWDR8BKDg==",
+            "IkIIARIgDxeHAqWkjxGksWMGHdS8WfKQ/jdZleJrxRVDxO3J7ltF6vLfak3qWaJuUOTv5AFQhoHlAVDg5cwBUMai7QEpPq18ki+K3PwyQIl2vsBM9+vMvYolSRYNZ1ElimYNC6qT3DsnmL/P+6mOW/fS0r27SDMOGfeLVOD2FwbAo2S05HXPzWgqQOnmMgw=",
+            "IkIIARIgZYahIxt98dknWHu347FPCiDbJkNbXmNCMqAJlMHuIN1F6vLfak3qWaJuUOTv5AFQhoHlAVDg5cwBUMai7QEpPq18ki+K3PwyQNCbZP0ESnC0KiFYIr9jnW9rUz1BmrujcLcol85C29H7wIWWc73/h02RnddHOBwdG6cgxs9Vk0VzOSwiRj2Heg4=",
+            "IkIIARIgms3UDFAUcBufuFqb+oPt3dky5O1U+1a+D80YVMZ8MjRF6vLfak3qWaJuUOTv5AFQhoHlAVDg5cwBUMai7QEpPq18ki+K3PwyQEPQ86P1zneK8XK4eqHkcb/N83eNJ5qD6cKwaB4Fr0OCxZX94IfQvMnJAgtqAyvYfBpuKnTO8XJTCFP0GLXPQw8=",
+            "IkUIARIgaMVHur3UExsppAQNmlq0lEm4VJJ2R+HAu3V2JFKxV8FF6vLfak3qWaJuULLKNFDy6FZQqN++AVDQ8tQBUNrp5gEpPq18ki+K3PwyQK2yfjgIq70u2EeEHkmtB2PTr4C65njTYiwCqOF5+ifR6qcqYT2nvcEK8Kb/pMUW8vEVQr+0Y314HpF6AF4h0As=",
+            "IkoIARIgAMdpGLGVnpcF3RtvKZld2zISFKdkviQmghM9RBMrurdF6vLfak3qWaJuUOyjHFDtoxxQ7qMcULLkHlC41DVQxIsaUNrcOCk+rXySL4rc/DJAjp+0p3FX9Uzh8khTf3bl0yDoASPJEHWW6pyXuiryz+mXTuQFjRX3acWTOn7GuqLXMOrd/HGj3LSk2coHq4yBAg==",
+        };
+
+        public static void EnsureTrustedRootCAs() {
+            if (trustedRootCAsInstalled) return;
+            if (!EnsureInitialized() || interfacePtr == IntPtr.Zero) return;
+
+            trustedRootCAsInstalled = true;
+            int successCount = 0;
+            StringBuilder errMsg = new StringBuilder(1024);
+
+            foreach (string caCert in ValveRootCACertificates) {
+                errMsg.Clear();
+                try {
+                    if (SteamAPI_ISteamNetworkingSockets_AddTrustedRootCA(interfacePtr, caCert, errMsg)) {
+                        successCount++;
+                    } else if (errMsg.Length > 0) {
+                        SteamShimLogger.Warn($"[SteamNetworkingSockets] AddTrustedRootCA note: {errMsg}");
+                    }
+                } catch (Exception ex) {
+                    SteamShimLogger.Warn($"[SteamNetworkingSockets] AddTrustedRootCA exception: {ex.Message}");
+                    break;
+                }
+            }
+            SteamShimLogger.Info($"[SteamNetworkingSockets] Installed {successCount}/{ValveRootCACertificates.Length} Valve Root CAs into GNS.");
+        }
+
         public static bool EnsureNetworkingCertificate(uint appId = 304930) {
             if (hasValveSignedCert) return true;
             if (!EnsureInitialized() || interfacePtr == IntPtr.Zero) return false;
+
+            EnsureTrustedRootCAs();
 
             if (!SteamUser.BLoggedOn()) {
                 SteamShimLogger.Info("[SteamNetworkingSockets] JavaSteam is not logged on. Using local self-signed certificate.");
@@ -380,10 +454,14 @@ namespace Steamworks {
                 // Step 4: Install signed certificate into GNS
                 errMsg.Clear();
                 bool setOk = SteamAPI_ISteamNetworkingSockets_SetCertificate(interfacePtr, signedCertBlob, signedCertBlob.Length, errMsg);
-                if (setOk) {
+                if (setOk && !errMsg.ToString().Contains("not known to us")) {
                     hasValveSignedCert = true;
-                    SteamShimLogger.Info($"[SteamNetworkingSockets] Valve-signed certificate successfully installed for AppID {appId}! (note/err: '{errMsg}')");
+                    SteamShimLogger.Info($"[SteamNetworkingSockets] Valve-signed certificate successfully verified and installed for AppID {appId}! (note/err: '{errMsg}')");
                     return true;
+                } else if (setOk) {
+                    SteamShimLogger.Warn($"[SteamNetworkingSockets] Valve-signed certificate installed with warning/note: '{errMsg}'.");
+                    hasValveSignedCert = false;
+                    return false;
                 } else {
                     SteamShimLogger.Warn($"[SteamNetworkingSockets] SteamAPI_ISteamNetworkingSockets_SetCertificate failed: {errMsg}");
                     return false;

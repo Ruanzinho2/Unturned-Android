@@ -1237,6 +1237,9 @@ namespace Steamworks {
         public static void EnsureAppID(uint appId = 304930) {
             NativeGameNetworkingSockets.EnsureAppID(appId);
         }
+        public static void EnsureTrustedRootCAs() {
+            NativeGameNetworkingSockets.EnsureTrustedRootCAs();
+        }
         public static bool EnsureNetworkingCertificate(uint appId = 304930) {
             return NativeGameNetworkingSockets.EnsureNetworkingCertificate(appId);
         }
@@ -2947,6 +2950,9 @@ namespace Steamworks {
         public static void EnsureAppID(uint appId = 304930) {
             NativeGameNetworkingSockets.EnsureAppID(appId);
         }
+        public static void EnsureTrustedRootCAs() {
+            NativeGameNetworkingSockets.EnsureTrustedRootCAs();
+        }
         public static bool EnsureNetworkingCertificate(uint appId = 304930) {
             return NativeGameNetworkingSockets.EnsureNetworkingCertificate(appId);
         }
@@ -4227,6 +4233,9 @@ namespace Steamworks {
         }
         public static void EnsureAppID(uint appId = 304930) {
             NativeGameNetworkingSockets.EnsureAppID(appId);
+        }
+        public static void EnsureTrustedRootCAs() {
+            NativeGameNetworkingSockets.EnsureTrustedRootCAs();
         }
         public static bool EnsureNetworkingCertificate(uint appId = 304930) {
             return NativeGameNetworkingSockets.EnsureNetworkingCertificate(appId);

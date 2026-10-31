@@ -158,6 +158,7 @@ namespace SDG.Unturned
                     {
                         Steamworks.NativeGameNetworkingSockets.EnsureLocalIdentity(uSteamId);
                         Steamworks.SteamNetworkingSockets.EnsureAppID(304930);
+                        Steamworks.SteamNetworkingSockets.EnsureTrustedRootCAs();
                         bool certReady = Steamworks.SteamNetworkingSockets.EnsureNetworkingCertificate(304930);
                         UnturnedLog.info($"[SteamBridge] Main thread EnsureNetworkingCertificate result: {certReady}");
                     }
